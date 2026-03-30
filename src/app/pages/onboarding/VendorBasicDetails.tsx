@@ -7,8 +7,23 @@ import { CategoryCard } from "../../components/onboarding/CategoryCard";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../components/ui/input-otp";
-import { Building2, Users, FileText, Phone, ShieldCheck, Loader2, MessageCircle, Briefcase, MoreHorizontal } from "lucide-react";
+import { Building2, Users, FileText, Phone, ShieldCheck, Loader2, MessageCircle, Briefcase, MoreHorizontal, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
+
+const VENDOR_ID = "550e8400-e29b-41d4-a716-446655440000";
+
+const LEGAL_ENTITY_MAP: Record<string, string> = {
+  sole: "SOLE_PROPRIETORSHIP",
+  partnership: "PARTNERSHIP",
+  private: "PRIVATE_LIMITED",
+  llp: "LLP",
+  others: "OTHERS",
+};
+
+function normalizePhone(val: string): string {
+  return val.replace(/\D/g, "").slice(-10);
+}
 
 export function VendorBasicDetails() {
   const navigate = useNavigate();
@@ -91,8 +106,54 @@ export function VendorBasicDetails() {
     }, 1000);
   }, [phoneOtpValue, altPhoneOtpValue, updateVendorBasicDetails]);
 
-  const handleNext = () => {
-    navigate("/onboarding/operations");
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  const handleNext = async () => {
+    setApiError("");
+    setSubmitting(true);
+    try {
+      const addr = vbd.address;
+      const businessAddress = [addr.shopNo, addr.streetArea, addr.landmark, addr.city, addr.state, addr.pincode]
+        .filter(Boolean)
+        .join(", ");
+
+      const payload = {
+        storeName: vbd.storeName,
+        businessName: vbd.businessName,
+        ownerName: vbd.ownerName,
+        legalEntityType: LEGAL_ENTITY_MAP[vbd.legalEntity] ?? vbd.legalEntity.toUpperCase(),
+        gstin: vbd.gstin,
+        pan: vbd.pan,
+        businessAddress,
+        contactPersonName: vbd.contactPerson,
+        designation: vbd.designation,
+        phoneNumber: normalizePhone(vbd.phone),
+        whatsappNumber: normalizePhone(vbd.phone),
+        alternatePhone: normalizePhone(vbd.altPhone),
+        email: vbd.email,
+      };
+
+      const res = await fetch(
+        `http://localhost:8080/api/v1/onboarding/${VENDOR_ID}/basic-details`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.message ?? "Something went wrong. Please try again.");
+      }
+
+      navigate("/onboarding/operations");
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const legalEntities = [
@@ -464,12 +525,26 @@ export function VendorBasicDetails() {
 
       {/* Navigation */}
       <div className="flex justify-end gap-4 pt-4">
+        {apiError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{apiError}</AlertDescription>
+          </Alert>
+        )}
         <Button
           onClick={handleNext}
+          disabled={submitting}
           style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
           className="w-full md:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
-          Continue to Store Operations
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Store Operations"
+          )}
         </Button>
       </div>
     </div>

@@ -17,7 +17,7 @@ import {
   Palette,
 } from "lucide-react";
 
-const dashrobeLogo = "";
+import dashrobeLogo from "../../../assets/a78789c3d1496ae95d940d2dcd13ebf4260231d3.png";
 
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },

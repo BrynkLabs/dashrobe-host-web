@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -7,7 +7,9 @@ import { Switch } from "../../components/ui/switch";
 import { TimeChip } from "../../components/onboarding/TimeChip";
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { Clock, MapPin, Copy, CopyCheck } from "lucide-react";
+import { Clock, MapPin, Copy, CopyCheck, Loader2 } from "lucide-react";
+
+const VENDOR_ID = "550e8400-e29b-41d4-a716-446655440000";
 
 export function StoreOperations() {
   const navigate = useNavigate();
@@ -69,7 +71,55 @@ export function StoreOperations() {
     { id: "12-15", label: "12\u201315 mins" },
   ];
 
-  const handleNext = () => navigate("/onboarding/categories");
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  const handleNext = async () => {
+    setApiError("");
+    setSubmitting(true);
+    try {
+      const addr = ops.storeAddress;
+      const storeLocation = [addr.shopNo, addr.streetArea, addr.landmark, addr.city, addr.state, addr.pincode]
+        .filter(Boolean)
+        .join(", ");
+
+      const payload = {
+        storeLocation,
+        operatingHours: ops.schedule.map((s) => ({
+          day: s.day.toUpperCase(),
+          isOpen: s.isOpen,
+          openTime: s.isOpen ? s.openTime : null,
+          closeTime: s.isOpen ? s.closeTime : null,
+        })),
+        orderPreparationTime: ops.preparationTime,
+        averagePackingTime: ops.packingTime,
+        readyFor30MinDelivery: ops.readyFor30Min,
+        packagingResponsibility: ops.packaging || "VENDOR",
+        deliveryCoverageKm: ops.deliveryCoverage,
+      };
+
+      const res = await fetch(
+        `http://localhost:8080/api/v1/onboarding/${VENDOR_ID}/store-operations`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`API error ${res.status}: ${text}`);
+      }
+
+      navigate("/onboarding/categories");
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleBack = () => navigate("/onboarding");
 
   return (
@@ -292,9 +342,13 @@ export function StoreOperations() {
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
+        {apiError && (
+          <p className="text-sm text-red-500 text-right">{apiError}</p>
+        )}
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={submitting}
           style={{ borderRadius: '12px' }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
         >
@@ -302,10 +356,18 @@ export function StoreOperations() {
         </Button>
         <Button
           onClick={handleNext}
+          disabled={submitting}
           style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
-          Continue to Product Categories
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Product Categories"
+          )}
         </Button>
       </div>
     </div>
