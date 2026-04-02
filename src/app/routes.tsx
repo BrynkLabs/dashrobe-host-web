@@ -1,94 +1,148 @@
 import { lazy, Suspense, Component, type ReactNode } from "react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { RoleProvider } from "./components/RoleContext";
+import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 
 // ─── Lazy page imports ─────────────────────────────────────────
 const OnboardingLayout = lazy(() =>
-  import("./components/layouts/OnboardingLayout").then((m) => ({ default: m.OnboardingLayout }))
+  import("./components/layouts/OnboardingLayout").then((m) => ({
+    default: m.OnboardingLayout,
+  }))
 );
 const VendorLayout = lazy(() =>
-  import("./components/layouts/VendorLayout").then((m) => ({ default: m.VendorLayout }))
+  import("./components/layouts/VendorLayout").then((m) => ({
+    default: m.VendorLayout,
+  }))
 );
 const AdminLayout = lazy(() =>
-  import("./components/layouts/AdminLayout").then((m) => ({ default: m.AdminLayout }))
+  import("./components/layouts/AdminLayout").then((m) => ({
+    default: m.AdminLayout,
+  }))
 );
 
 // Onboarding
 const VendorBasicDetails = lazy(() =>
-  import("./pages/onboarding/VendorBasicDetails").then((m) => ({ default: m.VendorBasicDetails }))
+  import("./pages/onboarding/VendorBasicDetails").then((m) => ({
+    default: m.VendorBasicDetails,
+  }))
 );
 const StoreOperations = lazy(() =>
-  import("./pages/onboarding/StoreOperations").then((m) => ({ default: m.StoreOperations }))
+  import("./pages/onboarding/StoreOperations").then((m) => ({
+    default: m.StoreOperations,
+  }))
 );
 const ProductCategories = lazy(() =>
-  import("./pages/onboarding/ProductCategories").then((m) => ({ default: m.ProductCategories }))
+  import("./pages/onboarding/ProductCategories").then((m) => ({
+    default: m.ProductCategories,
+  }))
 );
 const BankSettlement = lazy(() =>
-  import("./pages/onboarding/BankSettlement").then((m) => ({ default: m.BankSettlement }))
+  import("./pages/onboarding/BankSettlement").then((m) => ({
+    default: m.BankSettlement,
+  }))
 );
 const RefundsReturns = lazy(() =>
-  import("./pages/onboarding/RefundsReturns").then((m) => ({ default: m.RefundsReturns }))
+  import("./pages/onboarding/RefundsReturns").then((m) => ({
+    default: m.RefundsReturns,
+  }))
 );
 const OffersPromotions = lazy(() =>
-  import("./pages/onboarding/OffersPromotions").then((m) => ({ default: m.OffersPromotions }))
+  import("./pages/onboarding/OffersPromotions").then((m) => ({
+    default: m.OffersPromotions,
+  }))
 );
 const TechnologyInventory = lazy(() =>
-  import("./pages/onboarding/TechnologyInventory").then((m) => ({ default: m.TechnologyInventory }))
+  import("./pages/onboarding/TechnologyInventory").then((m) => ({
+    default: m.TechnologyInventory,
+  }))
 );
 const ReviewDeclaration = lazy(() =>
-  import("./pages/onboarding/ReviewDeclaration").then((m) => ({ default: m.ReviewDeclaration }))
+  import("./pages/onboarding/ReviewDeclaration").then((m) => ({
+    default: m.ReviewDeclaration,
+  }))
 );
 
 // Vendor
 const VendorDashboard = lazy(() =>
-  import("./pages/vendor/VendorDashboard").then((m) => ({ default: m.VendorDashboard }))
+  import("./pages/vendor/VendorDashboard").then((m) => ({
+    default: m.VendorDashboard,
+  }))
 );
 const VendorProducts = lazy(() =>
-  import("./pages/vendor/VendorProducts").then((m) => ({ default: m.VendorProducts }))
+  import("./pages/vendor/VendorProducts").then((m) => ({
+    default: m.VendorProducts,
+  }))
 );
 const VendorCategories = lazy(() =>
-  import("./pages/vendor/VendorCategories").then((m) => ({ default: m.VendorCategories }))
+  import("./pages/vendor/VendorCategories").then((m) => ({
+    default: m.VendorCategories,
+  }))
 );
 const VendorOrders = lazy(() =>
-  import("./pages/vendor/VendorOrders").then((m) => ({ default: m.VendorOrders }))
+  import("./pages/vendor/VendorOrders").then((m) => ({
+    default: m.VendorOrders,
+  }))
 );
 const VendorOffers = lazy(() =>
-  import("./pages/vendor/VendorOffers").then((m) => ({ default: m.VendorOffers }))
+  import("./pages/vendor/VendorOffers").then((m) => ({
+    default: m.VendorOffers,
+  }))
 );
 const VendorAccessManagement = lazy(() =>
-  import("./pages/vendor/VendorAccessManagement").then((m) => ({ default: m.VendorAccessManagement }))
+  import("./pages/vendor/VendorAccessManagement").then((m) => ({
+    default: m.VendorAccessManagement,
+  }))
 );
 const VendorSettings = lazy(() =>
-  import("./pages/vendor/VendorSettings").then((m) => ({ default: m.VendorSettings }))
+  import("./pages/vendor/VendorSettings").then((m) => ({
+    default: m.VendorSettings,
+  }))
 );
 const VendorInventory = lazy(() =>
-  import("./pages/vendor/VendorInventory").then((m) => ({ default: m.VendorInventory }))
+  import("./pages/vendor/VendorInventory").then((m) => ({
+    default: m.VendorInventory,
+  }))
 );
 const VendorOfflineOrders = lazy(() =>
-  import("./pages/vendor/VendorOfflineOrders").then((m) => ({ default: m.VendorOfflineOrders }))
+  import("./pages/vendor/VendorOfflineOrders").then((m) => ({
+    default: m.VendorOfflineOrders,
+  }))
 );
 
 // Admin
+const SuperAdminLogin = lazy(() =>
+  import("./pages/auth/SuperAdminLogin")
+);
 const AdminDashboard = lazy(() =>
-  import("./pages/admin/AdminDashboard").then((m) => ({ default: m.AdminDashboard }))
+  import("./pages/admin/AdminDashboard").then((m) => ({
+    default: m.AdminDashboard,
+  }))
 );
 const AdminStores = lazy(() =>
   import("./pages/admin/AdminStores").then((m) => ({ default: m.AdminStores }))
 );
 const AdminCustomerHome = lazy(() =>
-  import("./pages/admin/AdminCustomerHome").then((m) => ({ default: m.AdminCustomerHome }))
+  import("./pages/admin/AdminCustomerHome").then((m) => ({
+    default: m.AdminCustomerHome,
+  }))
 );
 const AdminSettings = lazy(() =>
-  import("./pages/admin/AdminSettings").then((m) => ({ default: m.AdminSettings }))
+  import("./pages/admin/AdminSettings").then((m) => ({
+    default: m.AdminSettings,
+  }))
 );
 const AdminBrands = lazy(() =>
   import("./pages/admin/AdminBrands").then((m) => ({ default: m.AdminBrands }))
 );
 const AdminAdsInterest = lazy(() =>
-  import("./pages/admin/AdminAdsInterest").then((m) => ({ default: m.AdminAdsInterest }))
+  import("./pages/admin/AdminAdsInterest").then((m) => ({
+    default: m.AdminAdsInterest,
+  }))
 );
 const DesignSystem = lazy(() =>
-  import("./pages/admin/DesignSystem").then((m) => ({ default: m.DesignSystem }))
+  import("./pages/admin/DesignSystem").then((m) => ({
+    default: m.DesignSystem,
+  }))
 );
 
 // ─── Loading spinner ───────────────────────────────────────────
@@ -210,6 +264,10 @@ function RedirectToCategories() {
   return <Navigate to="/vendor/categories" replace />;
 }
 
+function RedirectToLogin() {
+  return <Navigate to="/login" replace />;
+}
+
 // ─── Root layout ───────────────────────────────────────────────
 function RootLayout() {
   return (
@@ -238,19 +296,25 @@ function VendorLayoutRoute() {
 
 function AdminLayoutRoute() {
   return (
-    <LazyPage>
-      <AdminLayout />
-    </LazyPage>
+    <ProtectedRoute>
+      <LazyPage>
+        <AdminLayout />
+      </LazyPage>
+    </ProtectedRoute>
   );
 }
 
 // ─── Router ────────────────────────────────────────────────────
 export const router = createBrowserRouter([
   {
+    path: "/login",
+    Component: wrap(SuperAdminLogin),
+  },
+  {
     path: "/",
     Component: RootLayout,
     children: [
-      { index: true, Component: RedirectToVendor },
+      { index: true, Component: RedirectToLogin },
       {
         path: "onboarding",
         Component: OnboardingLayoutRoute,
@@ -278,7 +342,10 @@ export const router = createBrowserRouter([
           { path: "orders", Component: wrap(VendorOrders) },
           { path: "offline-orders", Component: wrap(VendorOfflineOrders) },
           { path: "offers", Component: wrap(VendorOffers) },
-          { path: "access-management", Component: wrap(VendorAccessManagement) },
+          {
+            path: "access-management",
+            Component: wrap(VendorAccessManagement),
+          },
           { path: "settings", Component: wrap(VendorSettings) },
           { path: "*", Component: RedirectToVendor },
         ],

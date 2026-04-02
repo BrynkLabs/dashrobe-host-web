@@ -9,6 +9,7 @@ import {
   BarChart, Bar,
 } from "recharts";
 import { Pagination, usePagination } from "../../components/Pagination";
+import approveStore from "@/app/Service/ApprovalService/approvalService";
 
 const revenueData = [
   { month: "Jul", revenue: 4200000 },
@@ -72,9 +73,16 @@ export function AdminDashboard() {
   const visibleStores = stores.filter(s => !approvedIds.has(s.id) && !rejectedIds.has(s.id));
   const { paginated: paginatedStores, totalPages: totalPendingPages, safePage: safePendingPage } = usePagination(visibleStores, ROWS_PER_PAGE, pendingPage);
 
-  const handleApprove = (id: string) => {
-    setApprovedIds(prev => new Set(prev).add(id));
-    setShowApproveModal(null);
+  const handleApprove = async (id: string) => {
+    try{
+      const response = await approveStore();
+      console.log("-----------Response: ", response.data);
+      setApprovedIds(prev => new Set(prev).add(id));
+      setShowApproveModal(null);
+    } catch (e) {
+      console.error("Error approving store:", e);
+      return;
+    }
   };
 
   const handleReject = (id: string) => {
