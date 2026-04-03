@@ -3,7 +3,7 @@ import {
   loginUser,
   verifyOtp,
 } from "@/app/Service/AuthService/authService";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 
 export default function LoginPage() {
@@ -17,10 +17,12 @@ export default function LoginPage() {
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [mobileError, setMobileError] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [resendOtpTrigger, setResendOtpTrigger] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token){
+    if (token) {
       navigate("/admin");
     }
   }, []);
@@ -49,6 +51,11 @@ export default function LoginPage() {
   };
 
   const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 4 || !/^\d+$/.test(otp)) {
+      setOtpError("Enter valid OTP");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -88,7 +95,7 @@ export default function LoginPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, resendOtpTrigger]);
 
   return (
     <div className="flex h-screen p-5">
@@ -106,17 +113,21 @@ export default function LoginPage() {
             </p>
 
             <div>
-            <input
-              className={`border rounded-lg px-4 py-3 w-[390px] ${mobileError ? "mb-1" : "mb-4"}`}
-              placeholder="Enter your mobile number"
-              value={phone}
-              maxLength={10}
-              onChange={(e) => {
-                setPhone(e.target.value.replace(/[^0-9]/g, ""))
-                setMobileError("");
-              }}
-            />
-            {mobileError && <p className="text-red-500 text-xs mb-4">{mobileError}</p>}
+              <input
+                className={`border rounded-lg px-4 py-3 w-[390px] ${
+                  mobileError ? "mb-1" : "mb-4"
+                }`}
+                placeholder="Enter your mobile number"
+                value={phone}
+                maxLength={10}
+                onChange={(e) => {
+                  setPhone(e.target.value.replace(/[^0-9]/g, ""));
+                  setMobileError("");
+                }}
+              />
+              {mobileError && (
+                <p className="text-red-500 text-xs mb-4">{mobileError}</p>
+              )}
             </div>
 
             <button
@@ -142,12 +153,22 @@ export default function LoginPage() {
               Enter OTP sent to your number on whatsapp
             </p>
 
-            <input
-              className="border rounded-lg px-4 py-3 w-[390px] mb-4"
-              placeholder="Enter OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
+            <div>
+              <input
+                className={`border rounded-lg px-4 py-3 w-[390px] ${
+                  otpError ? "mb-1" : "mb-4"
+                }`}
+                placeholder="Enter OTP"
+                value={otp}
+                onChange={(e) => {
+                  setOtp(e.target.value);
+                  setOtpError("");
+                }}
+              />
+              {otpError && (
+                <p className="text-red-500 text-xs mb-4">{otpError}</p>
+              )}
+            </div>
 
             <button
               onClick={handleVerifyOtp}
@@ -159,15 +180,29 @@ export default function LoginPage() {
             <div className="flex justify-between w-[320px] mt-4 text-sm">
               <button
                 className="text-[#220E92] font-[500]"
-                onClick={() => setStep("mobile")}
+                onClick={() => {
+                  setOtp("");
+                  setStep("mobile");
+                }}
               >
                 Edit Number
               </button>
 
               {!canResend ? (
-                <p className="text-gray-500">Resend OTP in <span className="text-[#220E92] font-[500]">{timer}seconds</span></p>
+                <p className="text-gray-500">
+                  Resend OTP in{" "}
+                  <span className="text-[#220E92] font-[500]">
+                    {timer}seconds
+                  </span>
+                </p>
               ) : (
-                <button className="text-[#220E92]" onClick={handleGenerateOtp}>
+                <button
+                  className="text-[#220E92]"
+                  onClick={() => {
+                    setResendOtpTrigger((prev) => prev + 1);
+                    handleGenerateOtp();
+                  }}
+                >
                   Resend OTP
                 </button>
               )}
