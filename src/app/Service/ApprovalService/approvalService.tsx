@@ -1,8 +1,9 @@
 import axios from "axios";
+import { axiosClient } from "../AxiosClient/axiosClient";
 
 const approveStore = async () => {
     try {
-        const response = await axios.post(`http://localhost:8080/api/superadmin/approve`);
+        const response = await axiosClient.post(`/api/superadmin/approve`);
         if (response.status === 200){
             return response;
         } else {

@@ -1,13 +1,14 @@
 import axios from "axios";
+import { axiosClient } from "../AxiosClient/axiosClient";
 
-const OTP_BASE = "https://api.notification.dashrobe.brynklabs.in/api/otp";
-const BACKEND = "http://localhost:8080";
+const OTP_BASE = import.meta.env.VITE_OTP_API_BASE_URL;
+const BACKEND = import.meta.env.VITE_API_BASE_URL;
 
 export const generateOtp = async (phone: string) => {
-  const res = await axios.post(`${OTP_BASE}/generate`, {
+  const res = await axios.post(`${OTP_BASE}/api/otp/generate`, {
     identifier_type: "MOBILE",
     identifier: phone,
-    user_category: "SUPERADMIN",
+    user_category: "HOST",
     purpose: "LOGIN",
     channel: ["WHATSAPP"],
     metadata: {},
@@ -21,9 +22,9 @@ export const verifyOtp = async (
   otp: string,
   tokenReferenceId: string
 ) => {
-  const res = await axios.post(`${OTP_BASE}/verify`, {
+  const res = await axios.post(`${OTP_BASE}/api/otp/verify`, {
     identifier: phone,
-    user_category: "SUPERADMIN",
+    user_category: "HOST",
     purpose: "LOGIN",
     channel: ["WHATSAPP"],
     tokenReferenceId,
@@ -34,7 +35,7 @@ export const verifyOtp = async (
 };
 
 export const loginUser = async (phone: string) => {
-  const res = await axios.post(`${BACKEND}/v1/auth/login`, {
+  const res = await axiosClient.post(`${BACKEND}/v1/auth/login`, {
     phoneNumber: phone,
   });
 

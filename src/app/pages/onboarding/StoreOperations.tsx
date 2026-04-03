@@ -8,6 +8,7 @@ import { TimeChip } from "../../components/onboarding/TimeChip";
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { Clock, MapPin, Copy, CopyCheck, Loader2 } from "lucide-react";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 
 const VENDOR_ID = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -32,7 +33,9 @@ export function StoreOperations() {
     (index: number) => {
       const source = ops.schedule[index];
       const newSchedule = ops.schedule.map((s) =>
-        s.isOpen ? { ...s, openTime: source.openTime, closeTime: source.closeTime } : s
+        s.isOpen
+          ? { ...s, openTime: source.openTime, closeTime: source.closeTime }
+          : s
       );
       updateStoreOperations({ schedule: newSchedule });
     },
@@ -44,7 +47,14 @@ export function StoreOperations() {
       const prev = ops.schedule[index - 1];
       if (prev) {
         const newSchedule = ops.schedule.map((item, i) =>
-          i === index ? { ...item, isOpen: prev.isOpen, openTime: prev.openTime, closeTime: prev.closeTime } : item
+          i === index
+            ? {
+                ...item,
+                isOpen: prev.isOpen,
+                openTime: prev.openTime,
+                closeTime: prev.closeTime,
+              }
+            : item
         );
         updateStoreOperations({ schedule: newSchedule });
       }
@@ -79,7 +89,14 @@ export function StoreOperations() {
     setSubmitting(true);
     try {
       const addr = ops.storeAddress;
-      const storeLocation = [addr.shopNo, addr.streetArea, addr.landmark, addr.city, addr.state, addr.pincode]
+      const storeLocation = [
+        addr.shopNo,
+        addr.streetArea,
+        addr.landmark,
+        addr.city,
+        addr.state,
+        addr.pincode,
+      ]
         .filter(Boolean)
         .join(", ");
 
@@ -98,23 +115,23 @@ export function StoreOperations() {
         deliveryCoverageKm: ops.deliveryCoverage,
       };
 
-      const res = await fetch(
-        `http://localhost:8080/api/v1/onboarding/${VENDOR_ID}/store-operations`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
+      const res = await axiosClient.put(
+        `/api/v1/onboarding/${VENDOR_ID}/store-operations`,
+        payload
       );
 
-      if (!res.ok) {
-        const text = await res.text();
+      if (res.status !== 200) {
+        const text = await res.data?.message;
         throw new Error(`API error ${res.status}: ${text}`);
       }
 
       navigate("/onboarding/categories");
     } catch (err) {
-      setApiError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setApiError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -125,8 +142,12 @@ export function StoreOperations() {
   return (
     <div className="space-y-6 md:space-y-8">
       <div>
-        <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Store Operations</h2>
-        <p className="text-sm md:text-base text-gray-600">Configure your store operational details</p>
+        <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">
+          Store Operations
+        </h2>
+        <p className="text-sm md:text-base text-gray-600">
+          Configure your store operational details
+        </p>
       </div>
 
       {/* Store Information */}
@@ -135,7 +156,9 @@ export function StoreOperations() {
           <div className="w-10 h-10 rounded-xl bg-[#220E92]/8 flex items-center justify-center">
             <MapPin className="w-5 h-5 text-[#220E92]" />
           </div>
-          <h3 className="text-base md:text-lg font-semibold text-gray-900">Store Location & Address</h3>
+          <h3 className="text-base md:text-lg font-semibold text-gray-900">
+            Store Location & Address
+          </h3>
         </div>
 
         <div className="space-y-2">
@@ -145,16 +168,24 @@ export function StoreOperations() {
             placeholder="https://maps.google.com/..."
             className="rounded-xl"
             value={ops.storeLocation}
-            onChange={(e) => updateStoreOperations({ storeLocation: e.target.value })}
+            onChange={(e) =>
+              updateStoreOperations({ storeLocation: e.target.value })
+            }
           />
-          <p className="text-xs text-gray-500">Paste your Google Maps or location link</p>
+          <p className="text-xs text-gray-500">
+            Paste your Google Maps or location link
+          </p>
         </div>
 
         <div className="space-y-3">
-          <Label className="text-sm font-semibold text-gray-800">Store Address *</Label>
+          <Label className="text-sm font-semibold text-gray-800">
+            Store Address *
+          </Label>
           <AddressFields
             address={ops.storeAddress}
-            onChange={(newAddr) => updateStoreOperations({ storeAddress: newAddr })}
+            onChange={(newAddr) =>
+              updateStoreOperations({ storeAddress: newAddr })
+            }
             idPrefix="store"
           />
         </div>
@@ -164,15 +195,20 @@ export function StoreOperations() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <Label className="text-sm font-semibold text-gray-800">Operating Hours *</Label>
+            <Label className="text-sm font-semibold text-gray-800">
+              Operating Hours *
+            </Label>
             <p className="text-xs text-gray-500 mt-0.5">
-              Configure timings for each day of the week · {openDaysCount} days open
+              Configure timings for each day of the week · {openDaysCount} days
+              open
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-400" />
             <span className="text-xs text-gray-500">
-              {openDaysCount === 7 ? "Open all week" : `${openDaysCount} of 7 days`}
+              {openDaysCount === 7
+                ? "Open all week"
+                : `${openDaysCount} of 7 days`}
             </span>
           </div>
         </div>
@@ -182,7 +218,9 @@ export function StoreOperations() {
             <div
               key={s.day}
               className={`flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3.5 rounded-xl border transition-colors ${
-                s.isOpen ? "border-gray-200 bg-white" : "border-gray-100 bg-gray-50/50"
+                s.isOpen
+                  ? "border-gray-200 bg-white"
+                  : "border-gray-100 bg-gray-50/50"
               }`}
             >
               <div className="flex items-center gap-3 w-full sm:w-40 shrink-0">
@@ -191,7 +229,9 @@ export function StoreOperations() {
                   onCheckedChange={(val) => updateSchedule(i, "isOpen", val)}
                 />
                 <span
-                  className={`text-sm ${s.isOpen ? "font-semibold text-gray-900" : "text-gray-400"}`}
+                  className={`text-sm ${
+                    s.isOpen ? "font-semibold text-gray-900" : "text-gray-400"
+                  }`}
                 >
                   {s.day}
                 </span>
@@ -202,27 +242,39 @@ export function StoreOperations() {
                     <input
                       type="time"
                       value={s.openTime}
-                      onChange={(e) => updateSchedule(i, "openTime", e.target.value)}
+                      onChange={(e) =>
+                        updateSchedule(i, "openTime", e.target.value)
+                      }
                       className="px-2.5 py-2 rounded-lg border border-gray-200 bg-white text-sm"
                     />
                     <span className="text-xs text-gray-500">to</span>
                     <input
                       type="time"
                       value={s.closeTime}
-                      onChange={(e) => updateSchedule(i, "closeTime", e.target.value)}
+                      onChange={(e) =>
+                        updateSchedule(i, "closeTime", e.target.value)
+                      }
                       className="px-2.5 py-2 rounded-lg border border-gray-200 bg-white text-sm"
                     />
                   </div>
                   <button
                     type="button"
-                    onClick={() => i === 0 ? applyToAll(i) : copyPrevious(i)}
+                    onClick={() => (i === 0 ? applyToAll(i) : copyPrevious(i))}
                     className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-[#220E92] font-medium hover:bg-[#220E92]/5 transition-colors"
-                    title={i === 0 ? "Apply this timing to all open days" : "Copy timing from previous day"}
+                    title={
+                      i === 0
+                        ? "Apply this timing to all open days"
+                        : "Copy timing from previous day"
+                    }
                   >
                     {i === 0 ? (
-                      <><Copy className="w-3 h-3" /> Apply to all</>
+                      <>
+                        <Copy className="w-3 h-3" /> Apply to all
+                      </>
                     ) : (
-                      <><CopyCheck className="w-3 h-3" /> Copy previous</>
+                      <>
+                        <CopyCheck className="w-3 h-3" /> Copy previous
+                      </>
                     )}
                   </button>
                 </div>
@@ -237,14 +289,21 @@ export function StoreOperations() {
 
         {/* Quick presets */}
         <div className="pt-3 border-t border-gray-200">
-          <p className="text-xs text-gray-500 font-medium mb-2">QUICK PRESETS</p>
+          <p className="text-xs text-gray-500 font-medium mb-2">
+            QUICK PRESETS
+          </p>
           <div className="flex flex-wrap gap-2">
             {[
               {
                 label: "All days 9 AM \u2013 9 PM",
                 action: () =>
                   setSchedulePreset(
-                    ops.schedule.map((s) => ({ ...s, isOpen: true, openTime: "09:00", closeTime: "21:00" }))
+                    ops.schedule.map((s) => ({
+                      ...s,
+                      isOpen: true,
+                      openTime: "09:00",
+                      closeTime: "21:00",
+                    }))
                   ),
               },
               {
@@ -266,8 +325,8 @@ export function StoreOperations() {
                     ops.schedule.map((s, idx) => ({
                       ...s,
                       isOpen: idx < 5,
-                      openTime: idx < 5 ? (s.openTime || "09:00") : "",
-                      closeTime: idx < 5 ? (s.closeTime || "21:00") : "",
+                      openTime: idx < 5 ? s.openTime || "09:00" : "",
+                      closeTime: idx < 5 ? s.closeTime || "21:00" : "",
                     }))
                   ),
               },
@@ -275,7 +334,12 @@ export function StoreOperations() {
                 label: "24/7",
                 action: () =>
                   setSchedulePreset(
-                    ops.schedule.map((s) => ({ ...s, isOpen: true, openTime: "00:00", closeTime: "23:59" }))
+                    ops.schedule.map((s) => ({
+                      ...s,
+                      isOpen: true,
+                      openTime: "00:00",
+                      closeTime: "23:59",
+                    }))
                   ),
               },
             ].map((preset) => (
@@ -296,7 +360,9 @@ export function StoreOperations() {
       <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <Clock className="w-5 h-5 text-[#220E92]" />
-          <h3 className="text-base md:text-lg font-semibold text-gray-900">Order Preparation</h3>
+          <h3 className="text-base md:text-lg font-semibold text-gray-900">
+            Order Preparation
+          </h3>
         </div>
 
         <div className="space-y-3">
@@ -307,7 +373,9 @@ export function StoreOperations() {
                 key={option.id}
                 label={option.label}
                 selected={ops.preparationTime === option.id}
-                onClick={() => updateStoreOperations({ preparationTime: option.id })}
+                onClick={() =>
+                  updateStoreOperations({ preparationTime: option.id })
+                }
               />
             ))}
           </div>
@@ -321,7 +389,9 @@ export function StoreOperations() {
                 key={option.id}
                 label={option.label}
                 selected={ops.packingTime === option.id}
-                onClick={() => updateStoreOperations({ packingTime: option.id })}
+                onClick={() =>
+                  updateStoreOperations({ packingTime: option.id })
+                }
               />
             ))}
           </div>
@@ -329,8 +399,12 @@ export function StoreOperations() {
 
         <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
           <div className="flex-1">
-            <Label htmlFor="ready30min" className="text-base font-medium">Ready for 30-min Delivery</Label>
-            <p className="text-sm text-gray-600 mt-1">Enable fast delivery option for customers</p>
+            <Label htmlFor="ready30min" className="text-base font-medium">
+              Ready for 30-min Delivery
+            </Label>
+            <p className="text-sm text-gray-600 mt-1">
+              Enable fast delivery option for customers
+            </p>
           </div>
           <Switch
             id="ready30min"
@@ -349,7 +423,7 @@ export function StoreOperations() {
           onClick={handleBack}
           variant="outline"
           disabled={submitting}
-          style={{ borderRadius: '12px' }}
+          style={{ borderRadius: "12px" }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
         >
           Back
@@ -357,7 +431,7 @@ export function StoreOperations() {
         <Button
           onClick={handleNext}
           disabled={submitting}
-          style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
+          style={{ backgroundColor: "#220E92", borderRadius: "12px" }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
           {submitting ? (

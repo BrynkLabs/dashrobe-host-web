@@ -18,6 +18,13 @@ export default function LoginPage() {
   const [canResend, setCanResend] = useState(false);
   const [mobileError, setMobileError] = useState("");
 
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token){
+      navigate("/admin");
+    }
+  }, []);
+
   const handleGenerateOtp = async () => {
     if (phone.length !== 10) {
       setMobileError("Enter valid mobile number");
@@ -52,6 +59,7 @@ export default function LoginPage() {
       const loginData = await loginUser(`+91${phone}`);
 
       localStorage.setItem("token", loginData.token);
+      localStorage.setItem("userId", loginData.userId);
 
       navigate("/admin");
     } catch (e) {

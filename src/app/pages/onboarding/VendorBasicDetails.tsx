@@ -10,6 +10,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../components/ui/input
 import { Building2, Users, FileText, Phone, ShieldCheck, Loader2, MessageCircle, Briefcase, MoreHorizontal, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 
 const VENDOR_ID = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -134,18 +135,13 @@ export function VendorBasicDetails() {
         email: vbd.email,
       };
 
-      const res = await fetch(
-        `http://localhost:8080/api/v1/onboarding/${VENDOR_ID}/basic-details`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
+      const res = await axiosClient.put(
+        `/api/v1/onboarding/${VENDOR_ID}/basic-details`,
+        payload
       );
 
-      if (!res.ok) {
-        const json = await res.json().catch(() => null);
-        throw new Error(json?.message ?? "Something went wrong. Please try again.");
+      if (res.status !== 200) {
+        throw new Error(res.data?.message ?? "Something went wrong. Please try again.");
       }
 
       navigate("/onboarding/operations");
