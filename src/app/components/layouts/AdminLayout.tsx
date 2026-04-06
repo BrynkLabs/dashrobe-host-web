@@ -22,11 +22,11 @@ import dashrobeLogo from "../../../assets/a78789c3d1496ae95d940d2dcd13ebf4260231
 const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/admin" },
   { label: "Stores", icon: Store, path: "/admin/stores" },
-  { label: "Brands", icon: Tag, path: "/admin/brands" },
-  { label: "Customer Home", icon: Home, path: "/admin/customer-home" },
-  { label: "Ads Interest", icon: Megaphone, path: "/admin/ads-interest" },
+  // { label: "Brands", icon: Tag, path: "/admin/brands" },
+  // { label: "Customer Home", icon: Home, path: "/admin/customer-home" },
+  // { label: "Ads Interest", icon: Megaphone, path: "/admin/ads-interest" },
   { label: "Settings", icon: Settings, path: "/admin/settings" },
-  { label: "Design System", icon: Palette, path: "/admin/design-system" },
+  // { label: "Design System", icon: Palette, path: "/admin/design-system" },
 ];
 
 export function AdminLayout() {
@@ -113,7 +113,7 @@ export function AdminLayout() {
         </nav>
 
         {/* Switch to Vendor */}
-        {!collapsed && (
+        {/* {!collapsed && (
           <div className="mx-2.5 mb-2.5">
             <button
               onClick={() => navigate("/vendor")}
@@ -127,7 +127,7 @@ export function AdminLayout() {
               </div>
             </button>
           </div>
-        )}
+        )} */}
 
         {/* Collapse button */}
         <div className="px-2.5 pb-4 pt-2 border-t border-white/8">
@@ -233,12 +233,12 @@ export function AdminLayout() {
             </button>
             <button className="relative text-muted-foreground hover:text-foreground transition-colors p-2 rounded-xl hover:bg-muted">
               <Bell className="w-[18px] h-[18px]" />
-              <span
+              {/* <span
                 className="absolute top-1 right-1 w-4 h-4 bg-[#FFC100] rounded-full flex items-center justify-center ring-2 ring-card"
                 style={{ fontSize: "9px", fontWeight: 700, color: "#0F0538" }}
               >
                 3
-              </span>
+              </span> */}
             </button>
             <div className="hidden sm:flex items-center gap-2.5 pl-2.5 ml-0.5 border-l border-border">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F0538] to-[#1a0a6e] flex items-center justify-center shadow-sm">

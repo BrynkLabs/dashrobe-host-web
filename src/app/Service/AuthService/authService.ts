@@ -35,7 +35,7 @@ export const verifyOtp = async (
 };
 
 export const loginUser = async (phone: string) => {
-  const res = await axiosClient.post(`${BACKEND}/v1/auth/login`, {
+  const res = await axiosClient.post(`${BACKEND}/v1/auth/superadmin/login`, {
     phoneNumber: phone,
   });
 
