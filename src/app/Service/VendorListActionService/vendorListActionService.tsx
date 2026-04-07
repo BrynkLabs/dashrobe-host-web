@@ -1,6 +1,6 @@
 import { StoreStatus } from "@/app/pages/admin/AdminStores";
 import { axiosClient } from "../AxiosClient/axiosClient";
-import { StoresResponse, StoreType } from "./Types/storeType";
+import { StoresResponse, StoreType, VendorDetailResponse } from "./Types/storeType";
 
 export type FiltersType = {
   status?: StoreStatus;
@@ -74,6 +74,51 @@ export const rejectStore = async (id: string, rejectionReason: string) => {
     }
   } catch (error) {
     console.error("Error rejecting store:", error);
+    throw error;
+  }
+};
+
+export const getVendorDetail = async (id: string): Promise<VendorDetailResponse> => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axiosClient.get<VendorDetailResponse>(
+      `/api/v1/superadmin/onboarding/${id}/detail`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (response.status === 200) {
+      return response.data;
+    } else {
+      throw new Error("Failed to fetch vendor detail");
+    }
+  } catch (error) {
+    console.error("Error fetching vendor detail:", error);
+    throw error;
+  }
+};
+
+export const reactivateVendorStore = async (id: string) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axiosClient.post(
+      `/api/v1/superadmin/onboarding/${id}/reactivate`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (response.status === 200) {
+      return response;
+    } else {
+      throw new Error(response?.data?.message || "Failed to reactivate store");
+    }
+  } catch (error) {
+    console.error("Error reactivating store:", error);
     throw error;
   }
 };
