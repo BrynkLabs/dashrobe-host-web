@@ -6,6 +6,9 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { getCookie, setCookie } from "@/app/utils/cookieUtils";
+import loginLogo from "@/assets/login-logo.png";
+import chatIcon from "@/assets/icons/chat-icon.png";
+import loginBanner from "@/assets/login-banner.png";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -102,7 +105,7 @@ export default function LoginPage() {
     <div className="flex h-screen p-5">
       {/* LEFT SIDE */}
       <div className="w-1/2 flex flex-col justify-center items-center bg-[#F3F4F6]">
-        <img src="src/assets/login-logo.png" className="w-20 mb-6" />
+        <img src={loginLogo} className="w-20 mb-6" />
 
         {step === "mobile" && (
           <>
@@ -139,7 +142,7 @@ export default function LoginPage() {
             </button>
 
             <div className="mt-4 bg-[#F0FDF4] text-[#016630] p-2 rounded-lg w-[390px] text-[12px] flex items-center">
-              <img src="src/assets/icons/chat-icon.png" className="w-4 mr-2" />
+              <img src={chatIcon} className="w-4 mr-2" />
               WhatsApp is mandatory on this number. All order updates and
               communication will be sent via WhatsApp.
             </div>
@@ -215,7 +218,7 @@ export default function LoginPage() {
       {/* RIGHT SIDE */}
       <div className="w-1/2 flex items-center justify-center">
         <img
-          src="src/assets/login-banner.png"
+          src={loginBanner}
           className="w-full h-full opacity-80"
         />
       </div>
