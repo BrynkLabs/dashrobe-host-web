@@ -3,8 +3,9 @@ import {
   loginUser,
   verifyOtp,
 } from "@/app/Service/AuthService/authService";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
+import { getCookie, setCookie } from "@/app/utils/cookieUtils";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export default function LoginPage() {
   const [resendOtpTrigger, setResendOtpTrigger] = useState(0);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getCookie("token");
     if (token) {
       navigate("/admin");
     }
@@ -65,7 +66,7 @@ export default function LoginPage() {
 
       const loginData = await loginUser(`+91${phone}`);
 
-      localStorage.setItem("token", loginData.token);
+      setCookie("token", loginData.token, 1);
       localStorage.setItem("userId", loginData.userId);
 
       navigate("/admin");

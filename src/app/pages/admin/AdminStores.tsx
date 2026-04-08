@@ -989,6 +989,7 @@ export function AdminStores() {
   });
   const [activeTab, setActiveTab] = useState<"all" | StoreStatus>("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedStore, setSelectedStore] = useState<StoreType | null>(null);
   const [showApproveModal, setShowApproveModal] = useState<string | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
@@ -1050,7 +1051,7 @@ export function AdminStores() {
         status: activeTab === "all" ? undefined : activeTab,
         page: tablePage - 1,
         size: TABLE_ROWS,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
       });
 
       setStores(response.data.stores);
@@ -1063,8 +1064,13 @@ export function AdminStores() {
   };
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
     fetchStores();
-  }, [activeTab, search, tablePage, showRejectModal, showApproveModal]);
+  }, [activeTab, debouncedSearch, tablePage, showRejectModal, showApproveModal]);
 
   // Stats
   // const totalStores = stores.length;
