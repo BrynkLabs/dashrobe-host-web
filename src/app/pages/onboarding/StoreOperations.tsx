@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -9,13 +9,73 @@ import { AddressFields } from "../../components/onboarding/AddressFields";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { Clock, MapPin, Copy, CopyCheck, Loader2 } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie } from "@/app/utils/cookieUtils";
 
-const VENDOR_ID = "550e8400-e29b-41d4-a716-446655440000";
+const DAY_ORDER = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const DAY_DISPLAY: Record<string, string> = {
+  MONDAY: "Monday", TUESDAY: "Tuesday", WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday", FRIDAY: "Friday", SATURDAY: "Saturday", SUNDAY: "Sunday",
+};
 
 export function StoreOperations() {
   const navigate = useNavigate();
   const { data, updateStoreOperations } = useOnboarding();
   const ops = data.storeOperations;
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStoreOperations = async () => {
+      try {
+        const token = getCookie("token");
+        const res = await axiosClient.get(`/api/v1/onboarding/store-operations`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = res.data?.data;
+        if (d) {
+          const scheduleFromApi = d.operatingHours?.length
+            ? DAY_ORDER.map((day) => {
+                const entry = d.operatingHours.find(
+                  (h: { day: string }) => h.day === day
+                );
+                if (entry) {
+                  return {
+                    day: DAY_DISPLAY[day] || day,
+                    isOpen: entry.isOpen,
+                    openTime: entry.isOpen && entry.openTime ? entry.openTime : "",
+                    closeTime: entry.isOpen && entry.closeTime ? entry.closeTime : "",
+                  };
+                }
+                return { day: DAY_DISPLAY[day] || day, isOpen: false, openTime: "", closeTime: "" };
+              })
+            : undefined;
+
+          updateStoreOperations({
+            storeLocation: d.storeLocation || "",
+            storeAddress: {
+              shopNo: d.shopNo || "",
+              streetArea: d.street || "",
+              landmark: d.landmark || "",
+              pincode: d.pincode || "",
+              district: d.district || "",
+              city: d.city || "",
+              state: d.state || "",
+            },
+            ...(scheduleFromApi ? { schedule: scheduleFromApi } : {}),
+            preparationTime: d.orderPreparationTime || "",
+            packingTime: d.averagePackingTime || "",
+            readyFor30Min: d.readyFor30MinDelivery ?? false,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch store operations:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStoreOperations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openDaysCount = ops.schedule.filter((s) => s.isOpen).length;
 
@@ -89,19 +149,16 @@ export function StoreOperations() {
     setSubmitting(true);
     try {
       const addr = ops.storeAddress;
-      const storeLocation = [
-        addr.shopNo,
-        addr.streetArea,
-        addr.landmark,
-        addr.city,
-        addr.state,
-        addr.pincode,
-      ]
-        .filter(Boolean)
-        .join(", ");
 
       const payload = {
-        storeLocation,
+        storeLocation: ops.storeLocation,
+        shopNo: addr.shopNo,
+        street: addr.streetArea,
+        landmark: addr.landmark,
+        pincode: addr.pincode,
+        district: addr.district,
+        city: addr.city,
+        state: addr.state,
         operatingHours: ops.schedule.map((s) => ({
           day: s.day.toUpperCase(),
           isOpen: s.isOpen,
@@ -111,13 +168,13 @@ export function StoreOperations() {
         orderPreparationTime: ops.preparationTime,
         averagePackingTime: ops.packingTime,
         readyFor30MinDelivery: ops.readyFor30Min,
-        packagingResponsibility: ops.packaging || "VENDOR",
-        deliveryCoverageKm: ops.deliveryCoverage,
       };
 
+      const token = getCookie("token");
       const res = await axiosClient.put(
-        `/api/v1/onboarding/${VENDOR_ID}/store-operations`,
-        payload
+        `/api/v1/onboarding/store-operations`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (res.status !== 200) {
@@ -126,18 +183,23 @@ export function StoreOperations() {
       }
 
       navigate("/onboarding/categories");
-    } catch (err) {
-      setApiError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong. Please try again."
-      );
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setApiError(msg);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleBack = () => navigate("/onboarding");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">

@@ -11,8 +11,8 @@ import { Building2, Users, FileText, Phone, ShieldCheck, Loader2, MessageCircle,
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
-
-const VENDOR_ID = "550e8400-e29b-41d4-a716-446655440000";
+import { generateOtp, verifyOtp } from "@/app/Service/AuthService/authService";
+import { getCookie } from "@/app/utils/cookieUtils";
 
 const LEGAL_ENTITY_MAP: Record<string, string> = {
   sole: "SOLE_PROPRIETORSHIP",
@@ -22,6 +22,10 @@ const LEGAL_ENTITY_MAP: Record<string, string> = {
   others: "OTHERS",
 };
 
+const REVERSE_LEGAL_ENTITY_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(LEGAL_ENTITY_MAP).map(([k, v]) => [v, k])
+);
+
 function normalizePhone(val: string): string {
   return val.replace(/\D/g, "").slice(-10);
 }
@@ -30,6 +34,55 @@ export function VendorBasicDetails() {
   const navigate = useNavigate();
   const { data, updateVendorBasicDetails } = useOnboarding();
   const vbd = data.vendorBasicDetails;
+
+  const [loading, setLoading] = useState(true);
+
+  // Fetch existing basic details on mount
+  useEffect(() => {
+    const fetchBasicDetails = async () => {
+      try {
+        const token = getCookie("token");
+        const res = await axiosClient.get(`/api/v1/onboarding/basic-details`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = res.data?.data;
+        if (d) {
+          updateVendorBasicDetails({
+            storeName: d.storeName || "",
+            businessName: d.businessName || "",
+            ownerName: d.ownerName || "",
+            legalEntity: REVERSE_LEGAL_ENTITY_MAP[d.legalEntityType] || "",
+            gstin: d.gstin || "",
+            pan: d.pan || "",
+            address: {
+              shopNo: d.registeredAddress || "",
+              streetArea: d.street || "",
+              landmark: d.landmark || "",
+              pincode: d.pincode || "",
+              district: d.district || "",
+              city: d.city || "",
+              state: d.state || "",
+            },
+            contactPerson: d.contactPersonName || "",
+            designation: d.designation || "",
+            phone: d.phoneNumber || "",
+            altPhone: d.alternatePhone || "",
+            email: d.email || d.vendorEmail || "",
+            contact2Name: d.secondaryContactName || "",
+            contact2Designation: d.secondaryDesignation || "",
+            contact2Phone: d.secondaryPhone || "",
+            contact2Email: d.secondaryEmail || "",
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch basic details:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBasicDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Phone verification UI state (not persisted to context)
   const [phoneOtpSent, setPhoneOtpSent] = useState(false);
@@ -45,6 +98,9 @@ export function VendorBasicDetails() {
   const [altPhoneVerifying, setAltPhoneVerifying] = useState(false);
   const [altPhoneResendTimer, setAltPhoneResendTimer] = useState(0);
   const [altPhoneError, setAltPhoneError] = useState("");
+
+  const [phoneTokenRefId, setPhoneTokenRefId] = useState("");
+  const [altPhoneTokenRefId, setAltPhoneTokenRefId] = useState("");
 
   // Countdown timers
   useEffect(() => {
@@ -63,13 +119,14 @@ export function VendorBasicDetails() {
 
   const isValidPhone = (val: string) => /^(\+91\s?)?[6-9]\d{9}$/.test(val.replace(/\s/g, ""));
 
-  const handleSendOtp = useCallback((type: "primary" | "alt") => {
+  const handleSendOtp = useCallback(async (type: "primary" | "alt") => {
     const num = type === "primary" ? vbd.phone : vbd.altPhone;
     const setError = type === "primary" ? setPhoneError : setAltPhoneError;
     const setSending = type === "primary" ? setPhoneSending : setAltPhoneSending;
     const setOtpSent = type === "primary" ? setPhoneOtpSent : setAltPhoneOtpSent;
     const setTimer = type === "primary" ? setPhoneResendTimer : setAltPhoneResendTimer;
     const setOtpValue = type === "primary" ? setPhoneOtpValue : setAltPhoneOtpValue;
+    const setTokenRefId = type === "primary" ? setPhoneTokenRefId : setAltPhoneTokenRefId;
 
     if (!isValidPhone(num)) {
       setError("Enter a valid 10-digit phone number");
@@ -78,34 +135,48 @@ export function VendorBasicDetails() {
     setError("");
     setSending(true);
     setOtpValue("");
-    // Simulate sending OTP
-    setTimeout(() => {
-      setSending(false);
+    try {
+      const fullPhone = `91${normalizePhone(num)}`;
+      const data = await generateOtp(fullPhone);
+      setTokenRefId(data.token_reference_id);
       setOtpSent(true);
       setTimer(30);
-    }, 1200);
+    } catch (e) {
+      console.error(e);
+      setError("Failed to send OTP. Please try again.");
+    } finally {
+      setSending(false);
+    }
   }, [vbd.phone, vbd.altPhone]);
 
-  const handleVerifyOtp = useCallback((type: "primary" | "alt") => {
+  const handleVerifyOtp = useCallback(async (type: "primary" | "alt") => {
     const otpVal = type === "primary" ? phoneOtpValue : altPhoneOtpValue;
+    const num = type === "primary" ? vbd.phone : vbd.altPhone;
+    const tokenRefId = type === "primary" ? phoneTokenRefId : altPhoneTokenRefId;
     const setError = type === "primary" ? setPhoneError : setAltPhoneError;
     const setVerifying = type === "primary" ? setPhoneVerifying : setAltPhoneVerifying;
 
-    if (otpVal.length !== 6) {
-      setError("Please enter the complete 6-digit OTP");
+    if (otpVal.length !== 4) {
+      setError("Please enter the complete 4-digit OTP");
       return;
     }
     setError("");
     setVerifying(true);
-    setTimeout(() => {
-      setVerifying(false);
+    try {
+      const fullPhone = `91${normalizePhone(num)}`;
+      await verifyOtp(fullPhone, otpVal, tokenRefId);
       if (type === "primary") {
         updateVendorBasicDetails({ phoneVerified: true });
       } else {
         updateVendorBasicDetails({ altPhoneVerified: true });
       }
-    }, 1000);
-  }, [phoneOtpValue, altPhoneOtpValue, updateVendorBasicDetails]);
+    } catch (e) {
+      console.error(e);
+      setError("OTP verification failed. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  }, [phoneOtpValue, altPhoneOtpValue, vbd.phone, vbd.altPhone, phoneTokenRefId, altPhoneTokenRefId, updateVendorBasicDetails]);
 
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -115,9 +186,6 @@ export function VendorBasicDetails() {
     setSubmitting(true);
     try {
       const addr = vbd.address;
-      const businessAddress = [addr.shopNo, addr.streetArea, addr.landmark, addr.city, addr.state, addr.pincode]
-        .filter(Boolean)
-        .join(", ");
 
       const payload = {
         storeName: vbd.storeName,
@@ -126,18 +194,34 @@ export function VendorBasicDetails() {
         legalEntityType: LEGAL_ENTITY_MAP[vbd.legalEntity] ?? vbd.legalEntity.toUpperCase(),
         gstin: vbd.gstin,
         pan: vbd.pan,
-        businessAddress,
+        registeredAddress: addr.shopNo,
+        street: addr.streetArea,
+        landmark: addr.landmark,
+        pincode: addr.pincode,
+        district: addr.district,
+        city: addr.city,
+        state: addr.state,
         contactPersonName: vbd.contactPerson,
         designation: vbd.designation,
-        phoneNumber: normalizePhone(vbd.phone),
-        whatsappNumber: normalizePhone(vbd.phone),
-        alternatePhone: normalizePhone(vbd.altPhone),
+        phoneNumber: vbd.phone,
+        alternatePhone: vbd.altPhone,
         email: vbd.email,
+        secondaryContactName: vbd.contact2Name,
+        secondaryDesignation: vbd.contact2Designation,
+        secondaryPhone: vbd.contact2Phone,
+        secondaryEmail: vbd.contact2Email,
+        vendorEmail: vbd.email,
       };
 
+      const token = getCookie("token");
       const res = await axiosClient.put(
-        `/api/v1/onboarding/${VENDOR_ID}/basic-details`,
-        payload
+        `/api/v1/onboarding/basic-details`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       if (res.status !== 200) {
@@ -145,8 +229,9 @@ export function VendorBasicDetails() {
       }
 
       navigate("/onboarding/operations");
-    } catch (err) {
-      setApiError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setApiError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -159,6 +244,14 @@ export function VendorBasicDetails() {
     { id: "llp", label: "LLP", icon: <Briefcase className="w-6 h-6 text-[#220E92]" /> },
     { id: "others", label: "Others", icon: <MoreHorizontal className="w-6 h-6 text-[#220E92]" /> },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -295,9 +388,11 @@ export function VendorBasicDetails() {
                 type="tel"
                 placeholder="+91 XXXXX XXXXX"
                 className="rounded-xl flex-1"
+                maxLength={10}
                 value={vbd.phone}
                 onChange={(e) => {
-                  updateVendorBasicDetails({ phone: e.target.value });
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  updateVendorBasicDetails({ phone: val });
                   if (vbd.phoneVerified) {
                     updateVendorBasicDetails({ phoneVerified: false });
                     setPhoneOtpSent(false);
@@ -334,11 +429,11 @@ export function VendorBasicDetails() {
               <div className="space-y-3 p-4 bg-purple-50/60 rounded-2xl border border-purple-100 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center gap-2 text-sm text-[#220E92]">
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Enter the 6-digit OTP sent to <span className="font-medium">{vbd.phone}</span></span>
+                  <span>Enter the 4-digit OTP sent to <span className="font-medium">{vbd.phone}</span></span>
                 </div>
                 <div className="flex items-center gap-3">
                   <InputOTP
-                    maxLength={6}
+                    maxLength={4}
                     value={phoneOtpValue}
                     onChange={setPhoneOtpValue}
                   >
@@ -347,14 +442,12 @@ export function VendorBasicDetails() {
                       <InputOTPSlot index={1} className="w-10 h-10 rounded-lg border-purple-200" />
                       <InputOTPSlot index={2} className="w-10 h-10 rounded-lg border-purple-200" />
                       <InputOTPSlot index={3} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={4} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={5} className="w-10 h-10 rounded-lg border-purple-200" />
                     </InputOTPGroup>
                   </InputOTP>
                   <Button
                     type="button"
                     onClick={() => handleVerifyOtp("primary")}
-                    disabled={phoneVerifying || phoneOtpValue.length !== 6}
+                    disabled={phoneVerifying || phoneOtpValue.length !== 4}
                     style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
                     className="shrink-0 px-4 text-xs h-10"
                   >
@@ -392,9 +485,11 @@ export function VendorBasicDetails() {
                 type="tel"
                 placeholder="+91 XXXXX XXXXX"
                 className="rounded-xl flex-1"
+                maxLength={10}
                 value={vbd.altPhone}
                 onChange={(e) => {
-                  updateVendorBasicDetails({ altPhone: e.target.value });
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  updateVendorBasicDetails({ altPhone: val });
                   if (vbd.altPhoneVerified) {
                     updateVendorBasicDetails({ altPhoneVerified: false });
                     setAltPhoneOtpSent(false);
@@ -428,11 +523,11 @@ export function VendorBasicDetails() {
               <div className="space-y-3 p-4 bg-purple-50/60 rounded-2xl border border-purple-100 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center gap-2 text-sm text-[#220E92]">
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Enter the 6-digit OTP sent to <span className="font-medium">{vbd.altPhone}</span></span>
+                  <span>Enter the 4-digit OTP sent to <span className="font-medium">{vbd.altPhone}</span></span>
                 </div>
                 <div className="flex items-center gap-3">
                   <InputOTP
-                    maxLength={6}
+                    maxLength={4}
                     value={altPhoneOtpValue}
                     onChange={setAltPhoneOtpValue}
                   >
@@ -441,14 +536,12 @@ export function VendorBasicDetails() {
                       <InputOTPSlot index={1} className="w-10 h-10 rounded-lg border-purple-200" />
                       <InputOTPSlot index={2} className="w-10 h-10 rounded-lg border-purple-200" />
                       <InputOTPSlot index={3} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={4} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={5} className="w-10 h-10 rounded-lg border-purple-200" />
                     </InputOTPGroup>
                   </InputOTP>
                   <Button
                     type="button"
                     onClick={() => handleVerifyOtp("alt")}
-                    disabled={altPhoneVerifying || altPhoneOtpValue.length !== 6}
+                    disabled={altPhoneVerifying || altPhoneOtpValue.length !== 4}
                     style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
                     className="shrink-0 px-4 text-xs h-10"
                   >
@@ -507,7 +600,7 @@ export function VendorBasicDetails() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
                 <Label htmlFor="contact2Phone">Phone Number *</Label>
-                <Input id="contact2Phone" type="tel" placeholder="+91 XXXXX XXXXX" className="rounded-xl" value={vbd.contact2Phone} onChange={(e) => updateVendorBasicDetails({ contact2Phone: e.target.value })} />
+                <Input id="contact2Phone" type="tel" placeholder="+91 XXXXX XXXXX" maxLength={10} className="rounded-xl" value={vbd.contact2Phone} onChange={(e) => updateVendorBasicDetails({ contact2Phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact2Email">Email Address *</Label>

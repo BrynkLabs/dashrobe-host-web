@@ -2,6 +2,7 @@ import { lazy, Suspense, Component, type ReactNode } from "react";
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 import { RoleProvider } from "./components/RoleContext";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
+import VendorProtectedRoute from "./components/ProtectedRoute/VendorProtectedRoute";
 
 // ─── Lazy page imports ─────────────────────────────────────────
 const OnboardingLayout = lazy(() =>
@@ -109,9 +110,9 @@ const VendorOfflineOrders = lazy(() =>
   }))
 );
 
-// Admin
-const SuperAdminLogin = lazy(() =>
-  import("./pages/auth/SuperAdminLogin")
+// Auth
+const LoginPage = lazy(() =>
+  import("./pages/auth/LoginPage")
 );
 const AdminDashboard = lazy(() =>
   import("./pages/admin/AdminDashboard").then((m) => ({
@@ -280,9 +281,11 @@ function RootLayout() {
 // Layout wrappers that include Suspense for lazy layout components
 function OnboardingLayoutRoute() {
   return (
-    <LazyPage>
-      <OnboardingLayout />
-    </LazyPage>
+    <VendorProtectedRoute>
+      <LazyPage>
+        <OnboardingLayout />
+      </LazyPage>
+    </VendorProtectedRoute>
   );
 }
 
@@ -308,7 +311,19 @@ function AdminLayoutRoute() {
 export const router = createBrowserRouter([
   {
     path: "/login",
-    Component: wrap(SuperAdminLogin),
+    element: (
+      <LazyPage>
+        <LoginPage role="superadmin" />
+      </LazyPage>
+    ),
+  },
+  {
+    path: "/vendor-login",
+    element: (
+      <LazyPage>
+        <LoginPage role="vendor" />
+      </LazyPage>
+    ),
   },
   {
     path: "/",

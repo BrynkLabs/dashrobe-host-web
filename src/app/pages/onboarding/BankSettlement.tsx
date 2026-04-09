@@ -5,34 +5,198 @@ import { Label } from "../../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle } from "lucide-react";
-import { useState } from "react";
+import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie } from "@/app/utils/cookieUtils";
+
+const ACCOUNT_TYPE_MAP: Record<string, string> = {
+  savings: "SAVINGS",
+  current: "CURRENT",
+};
+
+const REVERSE_ACCOUNT_TYPE_MAP: Record<string, string> = {
+  SAVINGS: "savings",
+  CURRENT: "current",
+};
 
 export function BankSettlement() {
   const navigate = useNavigate();
   const { data, updateBankSettlement } = useOnboarding();
   const bank = data.bankSettlement;
 
+  const [loading, setLoading] = useState(true);
+  const [confirmAccountNumber, setConfirmAccountNumber] = useState("");
+  const [accountMismatch, setAccountMismatch] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [gstError, setGstError] = useState("");
+
+  // S3 keys for uploaded documents
+  const [docGstS3Key, setDocGstS3Key] = useState("");
+  const [docBusinessPanS3Key, setDocBusinessPanS3Key] = useState("");
+  const [docOwnerPanS3Key, setDocOwnerPanS3Key] = useState("");
+  const [docBankProofS3Key, setDocBankProofS3Key] = useState("");
+
+  // Upload progress states
+  const [gstUploading, setGstUploading] = useState(false);
+  const [businessPanUploading, setBusinessPanUploading] = useState(false);
+  const [ownerPanUploading, setOwnerPanUploading] = useState(false);
+  const [bankProofUploading, setBankProofUploading] = useState(false);
+
+  // Fetch existing bank settlement details on mount
+  useEffect(() => {
+    const fetchBankDetails = async () => {
+      try {
+        const token = getCookie("token");
+        const res = await axiosClient.get(`/api/v1/onboarding/bank-settlement`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = res.data?.data;
+        if (d) {
+          updateBankSettlement({
+            accountHolder: d.accountHolderName || "",
+            bankName: d.bankName || "",
+            accountNumber: d.accountNumber || "",
+            accountType: REVERSE_ACCOUNT_TYPE_MAP[d.accountType] || "",
+            ifscCode: d.ifscCode || "",
+            upiId: d.upiId || "",
+            gstCertificateUploaded: !!d.docGstCertificateS3Key,
+            businessPANUploaded: !!d.docBusinessPanS3Key,
+            ownerPANUploaded: !!d.docOwnerPanS3Key,
+            bankProofUploaded: !!d.docBankProofS3Key,
+          });
+          if (d.accountNumber) setConfirmAccountNumber(d.accountNumber);
+          if (d.docGstCertificateS3Key) setDocGstS3Key(d.docGstCertificateS3Key);
+          if (d.docBusinessPanS3Key) setDocBusinessPanS3Key(d.docBusinessPanS3Key);
+          if (d.docOwnerPanS3Key) setDocOwnerPanS3Key(d.docOwnerPanS3Key);
+          if (d.docBankProofS3Key) setDocBankProofS3Key(d.docBankProofS3Key);
+        }
+      } catch (e) {
+        console.error("Failed to fetch bank details:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBankDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Check account number mismatch
+  useEffect(() => {
+    if (confirmAccountNumber && bank.accountNumber) {
+      setAccountMismatch(confirmAccountNumber !== bank.accountNumber);
+    } else {
+      setAccountMismatch(false);
+    }
+  }, [confirmAccountNumber, bank.accountNumber]);
+
   const handleIfscChange = (value: string) => {
     updateBankSettlement({ ifscCode: value });
     if (value.length === 11) {
       setTimeout(() => {
-        updateBankSettlement({ bankName: "State Bank of India", bankVerified: true });
+        updateBankSettlement({ bankVerified: true });
       }, 500);
     }
   };
 
-  const [gstError, setGstError] = useState("");
+  const uploadDocument = async (
+    file: File,
+    documentType: string,
+    setUploading: (v: boolean) => void,
+    setS3Key: (v: string) => void,
+    setUploaded: (field: Record<string, boolean>) => void,
+  ) => {
+    setUploading(true);
+    try {
+      const token = getCookie("token");
+      const formData = new FormData();
+      formData.append("file", file);
 
-  const handleNext = () => {
+      const res = await axiosClient.post(
+        `/api/v1/onboarding/documents/upload?document_type=${documentType}`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      const s3Key = res.data?.data?.s3Key;
+      if (s3Key) {
+        setS3Key(s3Key);
+        setUploaded({ [`${documentType === "GST_CERTIFICATE" ? "gstCertificate" : documentType === "BUSINESS_PAN" ? "businessPAN" : documentType === "OWNER_PAN" ? "ownerPAN" : "bankProof"}Uploaded`]: true });
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Upload failed";
+      setApiError(msg);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    documentType: string,
+    setUploading: (v: boolean) => void,
+    setS3Key: (v: string) => void,
+    setUploaded: (field: Record<string, boolean>) => void,
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      uploadDocument(file, documentType, setUploading, setS3Key, setUploaded);
+    }
+  };
+
+  const handleNext = async () => {
+    if (accountMismatch) return;
     if (!bank.gstCertificateUploaded) {
       setGstError("GST Certificate is mandatory. Please upload before continuing.");
       return;
     }
     setGstError("");
-    navigate("/onboarding/returns");
+    setApiError("");
+    setSubmitting(true);
+    try {
+      const token = getCookie("token");
+      const payload = {
+        accountHolderName: bank.accountHolder,
+        bankName: bank.bankName,
+        accountNumber: bank.accountNumber,
+        confirmAccountNumber: confirmAccountNumber,
+        accountType: ACCOUNT_TYPE_MAP[bank.accountType] || bank.accountType.toUpperCase(),
+        ifscCode: bank.ifscCode,
+        upiId: bank.upiId,
+        docGstCertificateS3Key: docGstS3Key,
+        docBusinessPanS3Key: docBusinessPanS3Key,
+        docOwnerPanS3Key: docOwnerPanS3Key,
+        docBankProofS3Key: docBankProofS3Key,
+      };
+
+      await axiosClient.put(`/api/v1/onboarding/bank-settlement`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      navigate("/onboarding/returns");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setApiError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
   const handleBack = () => navigate("/onboarding/categories");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -100,8 +264,13 @@ export function BankSettlement() {
               id="confirmAccount"
               type="text"
               placeholder="Re-enter account number"
-              className="rounded-xl"
+              className={`rounded-xl ${accountMismatch ? "border-red-500 focus-visible:ring-red-200" : ""}`}
+              value={confirmAccountNumber}
+              onChange={(e) => setConfirmAccountNumber(e.target.value)}
             />
+            {accountMismatch && (
+              <p className="text-xs text-red-500">Account numbers do not match</p>
+            )}
           </div>
         </div>
 
@@ -179,12 +348,16 @@ export function BankSettlement() {
               id="gstCertificate"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
-              onChange={(e) => {
-                if (e.target.files?.[0]) updateBankSettlement({ gstCertificateUploaded: true });
-              }}
+              onChange={(e) =>
+                handleFileChange(e, "GST_CERTIFICATE", setGstUploading, setDocGstS3Key, (field) =>
+                  updateBankSettlement(field as any)
+                )
+              }
               className="rounded-xl"
+              disabled={gstUploading}
             />
-            {bank.gstCertificateUploaded && <CircleCheck className="w-5 h-5 text-green-500" />}
+            {gstUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
+            {bank.gstCertificateUploaded && !gstUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
           </div>
         </div>
 
@@ -195,12 +368,16 @@ export function BankSettlement() {
               id="businessPAN"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
-              onChange={(e) => {
-                if (e.target.files?.[0]) updateBankSettlement({ businessPANUploaded: true });
-              }}
+              onChange={(e) =>
+                handleFileChange(e, "BUSINESS_PAN", setBusinessPanUploading, setDocBusinessPanS3Key, (field) =>
+                  updateBankSettlement(field as any)
+                )
+              }
               className="rounded-xl"
+              disabled={businessPanUploading}
             />
-            {bank.businessPANUploaded && <CircleCheck className="w-5 h-5 text-green-500" />}
+            {businessPanUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
+            {bank.businessPANUploaded && !businessPanUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
           </div>
         </div>
 
@@ -211,12 +388,16 @@ export function BankSettlement() {
               id="ownerPAN"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
-              onChange={(e) => {
-                if (e.target.files?.[0]) updateBankSettlement({ ownerPANUploaded: true });
-              }}
+              onChange={(e) =>
+                handleFileChange(e, "OWNER_PAN", setOwnerPanUploading, setDocOwnerPanS3Key, (field) =>
+                  updateBankSettlement(field as any)
+                )
+              }
               className="rounded-xl"
+              disabled={ownerPanUploading}
             />
-            {bank.ownerPANUploaded && <CircleCheck className="w-5 h-5 text-green-500" />}
+            {ownerPanUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
+            {bank.ownerPANUploaded && !ownerPanUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
           </div>
         </div>
 
@@ -228,21 +409,29 @@ export function BankSettlement() {
               id="bankProof"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
-              onChange={(e) => {
-                if (e.target.files?.[0]) updateBankSettlement({ bankProofUploaded: true });
-              }}
+              onChange={(e) =>
+                handleFileChange(e, "BANK_PROOF", setBankProofUploading, setDocBankProofS3Key, (field) =>
+                  updateBankSettlement(field as any)
+                )
+              }
               className="rounded-xl"
+              disabled={bankProofUploading}
             />
-            {bank.bankProofUploaded && <CircleCheck className="w-5 h-5 text-green-500" />}
+            {bankProofUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
+            {bank.bankProofUploaded && !bankProofUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
           </div>
         </div>
       </div>
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
+        {apiError && (
+          <p className="text-sm text-red-500 text-right">{apiError}</p>
+        )}
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={submitting}
           style={{ borderRadius: '12px' }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
         >
@@ -250,10 +439,18 @@ export function BankSettlement() {
         </Button>
         <Button
           onClick={handleNext}
+          disabled={submitting || accountMismatch}
           style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
-          Continue to Refunds & Returns
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Refunds & Returns"
+          )}
         </Button>
       </div>
     </div>
