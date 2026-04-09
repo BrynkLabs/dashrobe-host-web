@@ -4,101 +4,18 @@ import { Label } from "../ui/label";
 import { Loader2, CheckCircle2, MapPin } from "lucide-react";
 import type { AddressData } from "./OnboardingContext";
 
-// ─── Mock pincode database (Indian pincodes) ──────────────────
-const pincodeDatabase: Record<string, { district: string; city: string; state: string }> = {
-  "110001": { district: "Central Delhi", city: "New Delhi", state: "Delhi" },
-  "110002": { district: "Central Delhi", city: "New Delhi", state: "Delhi" },
-  "110003": { district: "Central Delhi", city: "New Delhi", state: "Delhi" },
-  "110005": { district: "New Delhi", city: "New Delhi", state: "Delhi" },
-  "110016": { district: "South Delhi", city: "New Delhi", state: "Delhi" },
-  "110017": { district: "South Delhi", city: "New Delhi", state: "Delhi" },
-  "110019": { district: "South Delhi", city: "New Delhi", state: "Delhi" },
-  "110020": { district: "South Delhi", city: "New Delhi", state: "Delhi" },
-  "110025": { district: "South Delhi", city: "New Delhi", state: "Delhi" },
-  "110044": { district: "South East Delhi", city: "New Delhi", state: "Delhi" },
-  "110048": { district: "South West Delhi", city: "New Delhi", state: "Delhi" },
-  "110065": { district: "South Delhi", city: "New Delhi", state: "Delhi" },
-  "110070": { district: "South West Delhi", city: "New Delhi", state: "Delhi" },
-  "110085": { district: "North East Delhi", city: "New Delhi", state: "Delhi" },
-  "110091": { district: "East Delhi", city: "New Delhi", state: "Delhi" },
-  "110092": { district: "Shahdara", city: "New Delhi", state: "Delhi" },
-  "120001": { district: "Ghaziabad", city: "Ghaziabad", state: "Uttar Pradesh" },
-  "121001": { district: "Faridabad", city: "Faridabad", state: "Haryana" },
-  "122001": { district: "Gurugram", city: "Gurugram", state: "Haryana" },
-  "122002": { district: "Gurugram", city: "Gurugram", state: "Haryana" },
-  "122003": { district: "Gurugram", city: "Gurugram", state: "Haryana" },
-  "122018": { district: "Gurugram", city: "Gurugram", state: "Haryana" },
-  "201001": { district: "Ghaziabad", city: "Ghaziabad", state: "Uttar Pradesh" },
-  "201301": { district: "Gautam Buddha Nagar", city: "Noida", state: "Uttar Pradesh" },
-  "201304": { district: "Gautam Buddha Nagar", city: "Greater Noida", state: "Uttar Pradesh" },
-  "201306": { district: "Gautam Buddha Nagar", city: "Noida", state: "Uttar Pradesh" },
-  "400001": { district: "Mumbai City", city: "Mumbai", state: "Maharashtra" },
-  "400002": { district: "Mumbai City", city: "Mumbai", state: "Maharashtra" },
-  "400050": { district: "Mumbai Suburban", city: "Mumbai", state: "Maharashtra" },
-  "400053": { district: "Mumbai Suburban", city: "Mumbai", state: "Maharashtra" },
-  "400069": { district: "Mumbai Suburban", city: "Mumbai", state: "Maharashtra" },
-  "400076": { district: "Mumbai Suburban", city: "Mumbai", state: "Maharashtra" },
-  "400601": { district: "Thane", city: "Thane", state: "Maharashtra" },
-  "410210": { district: "Raigad", city: "Navi Mumbai", state: "Maharashtra" },
-  "411001": { district: "Pune", city: "Pune", state: "Maharashtra" },
-  "411014": { district: "Pune", city: "Pune", state: "Maharashtra" },
-  "411057": { district: "Pune", city: "Pune", state: "Maharashtra" },
-  "500001": { district: "Hyderabad", city: "Hyderabad", state: "Telangana" },
-  "500003": { district: "Hyderabad", city: "Hyderabad", state: "Telangana" },
-  "500034": { district: "Hyderabad", city: "Hyderabad", state: "Telangana" },
-  "500081": { district: "Hyderabad", city: "Hyderabad", state: "Telangana" },
-  "500084": { district: "Rangareddy", city: "Hyderabad", state: "Telangana" },
-  "560001": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "560002": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "560034": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "560037": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "560066": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "560076": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "560100": { district: "Bengaluru Urban", city: "Bengaluru", state: "Karnataka" },
-  "600001": { district: "Chennai", city: "Chennai", state: "Tamil Nadu" },
-  "600002": { district: "Chennai", city: "Chennai", state: "Tamil Nadu" },
-  "600017": { district: "Chennai", city: "Chennai", state: "Tamil Nadu" },
-  "600028": { district: "Chennai", city: "Chennai", state: "Tamil Nadu" },
-  "600040": { district: "Chennai", city: "Chennai", state: "Tamil Nadu" },
-  "600096": { district: "Kancheepuram", city: "Chennai", state: "Tamil Nadu" },
-  "700001": { district: "Kolkata", city: "Kolkata", state: "West Bengal" },
-  "700020": { district: "Kolkata", city: "Kolkata", state: "West Bengal" },
-  "700091": { district: "Kolkata", city: "Kolkata", state: "West Bengal" },
-  "380001": { district: "Ahmedabad", city: "Ahmedabad", state: "Gujarat" },
-  "380015": { district: "Ahmedabad", city: "Ahmedabad", state: "Gujarat" },
-  "380054": { district: "Ahmedabad", city: "Ahmedabad", state: "Gujarat" },
-  "302001": { district: "Jaipur", city: "Jaipur", state: "Rajasthan" },
-  "302015": { district: "Jaipur", city: "Jaipur", state: "Rajasthan" },
-  "302020": { district: "Jaipur", city: "Jaipur", state: "Rajasthan" },
-  "226001": { district: "Lucknow", city: "Lucknow", state: "Uttar Pradesh" },
-  "226010": { district: "Lucknow", city: "Lucknow", state: "Uttar Pradesh" },
-  "226024": { district: "Lucknow", city: "Lucknow", state: "Uttar Pradesh" },
-  "160001": { district: "Chandigarh", city: "Chandigarh", state: "Chandigarh" },
-  "160017": { district: "Chandigarh", city: "Chandigarh", state: "Chandigarh" },
-  "462001": { district: "Bhopal", city: "Bhopal", state: "Madhya Pradesh" },
-  "440001": { district: "Nagpur", city: "Nagpur", state: "Maharashtra" },
-  "452001": { district: "Indore", city: "Indore", state: "Madhya Pradesh" },
-  "682001": { district: "Ernakulam", city: "Kochi", state: "Kerala" },
-  "682016": { district: "Ernakulam", city: "Kochi", state: "Kerala" },
-  "682024": { district: "Ernakulam", city: "Kochi", state: "Kerala" },
-  "695001": { district: "Thiruvananthapuram", city: "Thiruvananthapuram", state: "Kerala" },
-  "751001": { district: "Khordha", city: "Bhubaneswar", state: "Odisha" },
-  "800001": { district: "Patna", city: "Patna", state: "Bihar" },
-  "831001": { district: "East Singhbhum", city: "Jamshedpur", state: "Jharkhand" },
-  "834001": { district: "Ranchi", city: "Ranchi", state: "Jharkhand" },
-  "360001": { district: "Rajkot", city: "Rajkot", state: "Gujarat" },
-  "395001": { district: "Surat", city: "Surat", state: "Gujarat" },
-  "395007": { district: "Surat", city: "Surat", state: "Gujarat" },
-  "390001": { district: "Vadodara", city: "Vadodara", state: "Gujarat" },
-};
-
-function lookupPincode(pincode: string): Promise<{ district: string; city: string; state: string } | null> {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const result = pincodeDatabase[pincode] ?? null;
-      resolve(result);
-    }, 600);
-  });
+async function lookupPincode(pincode: string): Promise<{ district: string; city: string; state: string } | null> {
+  try {
+    const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+    const data = await res.json();
+    if (data?.[0]?.Status === "Success" && data[0].PostOffice?.length > 0) {
+      const po = data[0].PostOffice[0];
+      return { district: po.District, city: po.Block || po.District, state: po.State };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 interface AddressFieldsProps {
