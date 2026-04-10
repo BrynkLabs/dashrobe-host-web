@@ -291,9 +291,11 @@ function OnboardingLayoutRoute() {
 
 function VendorLayoutRoute() {
   return (
-    <LazyPage>
-      <VendorLayout />
-    </LazyPage>
+    <VendorProtectedRoute>
+      <LazyPage>
+        <VendorLayout />
+      </LazyPage>
+    </VendorProtectedRoute>
   );
 }
 
