@@ -1,7 +1,9 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Check, Menu, X, HelpCircle } from "lucide-react";
+import { Check, Menu, X, HelpCircle, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { OnboardingProvider } from "../onboarding/OnboardingContext";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie } from "@/app/utils/cookieUtils";
 
 const steps = [
   { id: 1, title: "Vendor Basic Details", path: "/onboarding" },
@@ -10,15 +12,15 @@ const steps = [
   { id: 4, title: "Bank & Settlement", path: "/onboarding/banking" },
   { id: 5, title: "Refunds & Returns", path: "/onboarding/returns" },
   { id: 6, title: "Offers & Promotions", path: "/onboarding/offers" },
-  { id: 7, title: "Technology & Inventory", path: "/onboarding/technology" },
-  { id: 8, title: "Review & Declaration", path: "/onboarding/review" },
+  { id: 7, title: "Review & Declaration", path: "/onboarding/review" },
 ];
 
 export function OnboardingLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+  const [stepCompletion, setStepCompletion] = useState<Record<string, boolean>>({});
+
   const currentStepIndex = steps.findIndex(step => step.path === location.pathname);
   const currentStep = currentStepIndex + 1;
   const progressPercent = Math.round((currentStep / steps.length) * 100);
@@ -26,6 +28,36 @@ export function OnboardingLayout() {
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  // Fetch onboarding status whenever the route changes so the sidebar reflects
+  // the latest step completion as the user progresses through the flow.
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const token = getCookie("token");
+        const res = await axiosClient.get(`/api/v1/onboarding/status`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const completion = res.data?.data?.stepCompletion;
+        if (completion && typeof completion === "object") {
+          setStepCompletion(completion);
+        }
+      } catch (e) {
+        console.error("Failed to fetch onboarding status:", e);
+      }
+    };
+    fetchStatus();
+  }, [location.pathname]);
+
+  // A step is unlocked iff every previous step is marked complete in the API.
+  // Step 1 is always unlocked.
+  const isStepUnlocked = (stepId: number) => {
+    if (stepId === 1) return true;
+    for (let i = 1; i < stepId; i++) {
+      if (!stepCompletion[String(i)]) return false;
+    }
+    return true;
+  };
 
   return (
     <OnboardingProvider>
@@ -101,22 +133,32 @@ export function OnboardingLayout() {
         <div className="flex-1 px-3 md:px-4 overflow-y-auto pb-3">
           <div className="space-y-0.5">
             {steps.map((step, index) => {
-              const isCompleted = index < currentStepIndex;
+              const isCompleted = !!stepCompletion[String(step.id)];
               const isCurrent = index === currentStepIndex;
-              
+              const isUnlocked = isStepUnlocked(step.id);
+              const isLocked = !isUnlocked && !isCurrent;
+
               return (
                 <button
                   key={step.id}
-                  onClick={() => navigate(step.path)}
+                  onClick={() => {
+                    if (isLocked) return;
+                    navigate(step.path);
+                  }}
+                  disabled={isLocked}
+                  aria-disabled={isLocked}
+                  title={isLocked ? "Complete the previous step to unlock" : undefined}
                   className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-lg transition-all group ${
                     isCurrent
                       ? "bg-white/12"
+                      : isLocked
+                      ? "cursor-not-allowed opacity-60"
                       : "hover:bg-white/6"
                   }`}
                 >
                   <div className="relative flex flex-col items-center">
                     <div
-                      className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${ 
+                      className={`w-7 h-7 rounded-md flex items-center justify-center transition-all ${
                         isCompleted
                           ? 'bg-[#FFC100]/90 text-[#220E92]'
                           : isCurrent
@@ -137,9 +179,11 @@ export function OnboardingLayout() {
                       {step.title}
                     </span>
                   </div>
-                  {isCurrent && (
+                  {isCurrent ? (
                     <div className="w-1.5 h-1.5 rounded-full bg-[#FFC100]" />
-                  )}
+                  ) : isLocked ? (
+                    <Lock className="w-3.5 h-3.5 text-white/30" />
+                  ) : null}
                 </button>
               );
             })}

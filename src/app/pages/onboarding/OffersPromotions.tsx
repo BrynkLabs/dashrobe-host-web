@@ -1,21 +1,75 @@
 import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Switch } from "../../components/ui/switch";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import {
-  Tag, CalendarCheck, Megaphone, Info, Percent, ShoppingBag, Gift, Lock,
+  Tag, CalendarCheck, Megaphone, Info, Percent, ShoppingBag, Gift, Lock, Loader2,
 } from "lucide-react";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie } from "@/app/utils/cookieUtils";
 
 export function OffersPromotions() {
   const navigate = useNavigate();
   const { data, updateOffersPromotions } = useOnboarding();
   const offers = data.offersPromotions;
 
-  const handleNext = () => {
-    navigate("/onboarding/technology");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  useEffect(() => {
+    const fetchOffersPromotions = async () => {
+      try {
+        const token = getCookie("token");
+        const res = await axiosClient.get(`/api/v1/onboarding/offers-promotions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = res.data?.data;
+        if (d) {
+          updateOffersPromotions({
+            joinPlatformSalesAds: !!d.platformAdsOptedIn,
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch offers & promotions:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOffersPromotions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleNext = async () => {
+    setApiError("");
+    setSubmitting(true);
+    try {
+      const token = getCookie("token");
+      const payload = {
+        platformAdsOptedIn: offers.joinPlatformSalesAds,
+      };
+      await axiosClient.put(`/api/v1/onboarding/offers-promotions`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      navigate("/onboarding/review");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setApiError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleBack = () => navigate("/onboarding/returns");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -131,9 +185,13 @@ export function OffersPromotions() {
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
+        {apiError && (
+          <p className="text-sm text-red-500 text-right">{apiError}</p>
+        )}
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={submitting}
           style={{ borderRadius: "12px" }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
         >
@@ -141,10 +199,18 @@ export function OffersPromotions() {
         </Button>
         <Button
           onClick={handleNext}
+          disabled={submitting}
           style={{ backgroundColor: "#220E92", borderRadius: "12px" }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
-          Continue to Inventory & Photography
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Review & Declaration"
+          )}
         </Button>
       </div>
     </div>

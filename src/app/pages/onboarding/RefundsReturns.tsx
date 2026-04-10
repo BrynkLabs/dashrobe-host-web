@@ -1,17 +1,76 @@
 import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { Info, RefreshCw, Phone, Mail } from "lucide-react";
+import { Info, RefreshCw, Phone, Mail, Loader2 } from "lucide-react";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie } from "@/app/utils/cookieUtils";
 
 export function RefundsReturns() {
   const navigate = useNavigate();
   const { data, updateRefundsReturns } = useOnboarding();
   const rr = data.refundsReturns;
 
-  const handleNext = () => navigate("/onboarding/offers");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+
+  useEffect(() => {
+    const fetchRefundPolicy = async () => {
+      try {
+        const token = getCookie("token");
+        const res = await axiosClient.get(`/api/v1/onboarding/refund-policy`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const d = res.data?.data;
+        if (d) {
+          updateRefundsReturns({
+            refundPhone: d.refundContactNumber || "",
+            refundEmail: d.refundContactEmail || "",
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch refund policy:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRefundPolicy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleNext = async () => {
+    setApiError("");
+    setSubmitting(true);
+    try {
+      const token = getCookie("token");
+      const payload = {
+        refundContactNumber: rr.refundPhone,
+        refundContactEmail: rr.refundEmail,
+      };
+      await axiosClient.put(`/api/v1/onboarding/refund-policy`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      navigate("/onboarding/offers");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setApiError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleBack = () => navigate("/onboarding/banking");
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -91,9 +150,13 @@ export function RefundsReturns() {
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
+        {apiError && (
+          <p className="text-sm text-red-500 text-right">{apiError}</p>
+        )}
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={submitting}
           style={{ borderRadius: '12px' }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
         >
@@ -101,10 +164,18 @@ export function RefundsReturns() {
         </Button>
         <Button
           onClick={handleNext}
+          disabled={submitting}
           style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
-          Continue to Offers & Promotions
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Offers & Promotions"
+          )}
         </Button>
       </div>
     </div>
