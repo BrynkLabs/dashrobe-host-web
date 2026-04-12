@@ -31,6 +31,7 @@ export function BankSettlement() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
   const [gstError, setGstError] = useState("");
+  const [ifscError, setIfscError] = useState("");
 
   // S3 keys for uploaded documents
   const [docGstS3Key, setDocGstS3Key] = useState("");
@@ -91,12 +92,21 @@ export function BankSettlement() {
     }
   }, [confirmAccountNumber, bank.accountNumber]);
 
+  const isValidIfsc = (code: string) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(code);
+
   const handleIfscChange = (value: string) => {
-    updateBankSettlement({ ifscCode: value });
-    if (value.length === 11) {
-      setTimeout(() => {
-        updateBankSettlement({ bankVerified: true });
-      }, 500);
+    updateBankSettlement({ ifscCode: value, bankVerified: false });
+    if (value.length === 0) {
+      setIfscError("");
+    } else if (value.length === 11) {
+      if (isValidIfsc(value)) {
+        setIfscError("");
+        setTimeout(() => updateBankSettlement({ bankVerified: true }), 500);
+      } else {
+        setIfscError("Invalid IFSC format. Must be 4 letters, followed by 0, then 6 alphanumeric characters (e.g., SBIN0001234)");
+      }
+    } else {
+      setIfscError("");
     }
   };
 
@@ -152,6 +162,10 @@ export function BankSettlement() {
 
   const handleNext = async () => {
     if (accountMismatch) return;
+    if (bank.ifscCode && !isValidIfsc(bank.ifscCode)) {
+      setIfscError("Invalid IFSC format. Must be 4 letters, followed by 0, then 6 alphanumeric characters (e.g., SBIN0001234)");
+      return;
+    }
     if (!bank.gstCertificateUploaded) {
       setGstError("GST Certificate is mandatory. Please upload before continuing.");
       return;
@@ -301,6 +315,9 @@ export function BankSettlement() {
               onChange={(e) => handleIfscChange(e.target.value.toUpperCase())}
               className="rounded-xl"
             />
+            {ifscError && (
+              <p className="text-xs text-red-500">{ifscError}</p>
+            )}
             {bank.bankName && (
               <div className="flex items-center gap-2">
                 <VerificationBadge verified={bank.bankVerified} label="Bank Verified" />

@@ -15,6 +15,7 @@ import { formatAddress } from "../../components/onboarding/AddressFields";
 import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info, Loader2 } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
+import containerIcon from "@/assets/icons/Container.png";
 
 const LEGAL_ENTITY_MAP: Record<string, string> = {
   sole: "SOLE_PROPRIETORSHIP",
@@ -619,7 +620,7 @@ export function ReviewDeclaration() {
       <Dialog open={tncOpen} onOpenChange={setTncOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader className="flex flex-row items-center">
-            <img src="/src/assets/icons/Container.png" alt="Container Icon" className="w-[40px] h-[40px]" />
+            <img src={containerIcon} alt="Container Icon" className="w-[40px] h-[40px]" />
             <DialogTitle className="text-xl text-[#1A1A2E]">Terms & Conditions</DialogTitle>
           </DialogHeader>
 

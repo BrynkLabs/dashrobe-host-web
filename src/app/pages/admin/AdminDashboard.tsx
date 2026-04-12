@@ -299,7 +299,7 @@ export function AdminDashboard() {
                         <button
                           onClick={() =>
                             navigate("/admin/stores", {
-                              state: { storeId: s.vendorId },
+                              state: { store: s },
                             })
                           }
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#220E92]/8 text-[#220E92] hover:bg-[#220E92]/15 border border-[#220E92]/20 transition-colors"

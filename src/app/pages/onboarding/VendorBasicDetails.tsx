@@ -307,8 +307,9 @@ export function VendorBasicDetails() {
                 className="rounded-xl"
                 value={vbd.gstin}
                 onChange={(e) => {
-                  updateVendorBasicDetails({ gstin: e.target.value });
-                  if (e.target.value.length === 15) {
+                  const val = e.target.value;
+                  updateVendorBasicDetails({ gstin: val, gstVerified: false });
+                  if (val.length === 15) {
                     setTimeout(() => updateVendorBasicDetails({ gstVerified: true }), 500);
                   }
                 }}
@@ -326,8 +327,9 @@ export function VendorBasicDetails() {
                 className="rounded-xl"
                 value={vbd.pan}
                 onChange={(e) => {
-                  updateVendorBasicDetails({ pan: e.target.value });
-                  if (e.target.value.length === 10) {
+                  const val = e.target.value;
+                  updateVendorBasicDetails({ pan: val, panVerified: false });
+                  if (val.length === 10) {
                     setTimeout(() => updateVendorBasicDetails({ panVerified: true }), 500);
                   }
                 }}
