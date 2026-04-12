@@ -21,6 +21,8 @@ export function OnboardingLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [stepCompletion, setStepCompletion] = useState<Record<string, boolean>>({});
 
+  const [hasRedirected, setHasRedirected] = useState(false);
+
   const currentStepIndex = steps.findIndex(step => step.path === location.pathname);
   const currentStep = currentStepIndex + 1;
   const progressPercent = Math.round((currentStep / steps.length) * 100);
@@ -41,6 +43,17 @@ export function OnboardingLayout() {
         const completion = res.data?.data?.stepCompletion;
         if (completion && typeof completion === "object") {
           setStepCompletion(completion);
+
+          // On first load, redirect to the first incomplete step
+          if (!hasRedirected) {
+            setHasRedirected(true);
+            const firstIncompleteStep = steps.find(
+              (step) => !completion[String(step.id)]
+            );
+            if (firstIncompleteStep && firstIncompleteStep.path !== location.pathname) {
+              navigate(firstIncompleteStep.path, { replace: true });
+            }
+          }
         }
       } catch (e) {
         console.error("Failed to fetch onboarding status:", e);

@@ -92,7 +92,7 @@ export default function LoginPage({ role }: LoginPageProps) {
       navigate(redirectPath);
     } catch (e: any) {
       console.error(e);
-      const msg = e?.response?.data?.message || e?.message || "OTP verification failed";
+      const msg = e?.response?.data?.data?.message || e?.response?.data?.message || e?.message || "OTP verification failed";
       setOtpError(msg);
     } finally {
       setLoading(false);
@@ -182,8 +182,10 @@ export default function LoginPage({ role }: LoginPageProps) {
                 }`}
                 placeholder="Enter OTP"
                 value={otp}
+                maxLength={4}
+                inputMode="numeric"
                 onChange={(e) => {
-                  setOtp(e.target.value);
+                  setOtp(e.target.value.replace(/[^0-9]/g, ""));
                   setOtpError("");
                 }}
               />
@@ -222,6 +224,7 @@ export default function LoginPage({ role }: LoginPageProps) {
                   className="text-[#220E92]"
                   onClick={() => {
                     setResendOtpTrigger((prev) => prev + 1);
+                    setOtp("");
                     handleGenerateOtp();
                   }}
                 >

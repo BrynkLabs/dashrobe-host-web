@@ -1017,13 +1017,9 @@ export function AdminStores() {
 
   // Auto-select store from navigation state (e.g. from Dashboard "View" button)
   useEffect(() => {
-    const state = location.state as { storeId?: string } | null;
-    if (state?.storeId) {
-      const found = stores.find((s) => s.vendorId === state.storeId);
-      if (found) {
-        setSelectedStore(found);
-        setOrderFilter("all");
-      }
+    const state = location.state as { store?: StoreType } | null;
+    if (state?.store) {
+      handleViewVendorDetail(state.store);
       // Clear the state so refreshing doesn't re-trigger
       window.history.replaceState({}, "");
     }
@@ -1421,7 +1417,7 @@ export function AdminStores() {
                   <div>
                     <DField label="30-min Delivery" badge={<VBadge ok={vd.storeOperations.readyFor30MinDelivery} yes="Enabled" no="Disabled" />} />
                     <DField label="Packaging" value={vd.storeOperations.packagingResponsibility} />
-                    <DField label="Delivery Coverage" value={`${vd.storeOperations.deliveryCoverageKm} km`} />
+                    <DField label="Delivery Coverage" value={vd.storeOperations.deliveryCoverageKm != null ? `${vd.storeOperations.deliveryCoverageKm} km` : "NA"} />
                   </div>
                 </div>
                 {vd.storeOperations.operatingHours.length > 0 && (
@@ -1449,17 +1445,17 @@ export function AdminStores() {
               </div>
               <div className="p-5">
                 <div className="mb-3">
-                  <p className="text-muted-foreground" style={{ fontSize: "12px", fontWeight: 500 }}>Selected Category IDs</p>
+                  <p className="text-muted-foreground" style={{ fontSize: "12px", fontWeight: 500 }}>Selected Categories</p>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {vd.productCategories.selectedCategoryIds.map((catId) => (
                       <span key={catId} className="bg-[#220E92]/8 text-[#220E92] px-3 py-1 rounded-full" style={{ fontSize: "12px", fontWeight: 600 }}>{catId}</span>
                     ))}
                   </div>
                 </div>
-                <DField label="SKU Count (Approx)" value={String(vd.productCategories.skuCountApprox)} />
-                <DField label="Pricing Type" value={vd.productCategories.pricingType} />
+                {/* <DField label="SKU Count (Approx)" value={String(vd.productCategories.skuCountApprox)} />
+                <DField label="Pricing Type" value={vd.productCategories.pricingType} /> */}
                 <DField label="Price Range" value={vd.productCategories.averagePriceRange} />
-                <DField label="Customization" badge={<VBadge ok={vd.productCategories.customizationAvailable} yes="Available" no="Not Available" />} />
+                <DField label="Customization Offered" badge={<VBadge ok={vd.productCategories.customizationAvailable} yes="Available" no="Not Available" />} />
               </div>
             </div>
           )}

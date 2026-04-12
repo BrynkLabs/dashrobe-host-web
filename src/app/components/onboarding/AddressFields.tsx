@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Loader2, CheckCircle2, MapPin } from "lucide-react";
@@ -28,6 +28,7 @@ export function AddressFields({ address, onChange, idPrefix }: AddressFieldsProp
   const [pincodeLoading, setPincodeLoading] = useState(false);
   const [pincodeLookedUp, setPincodeLookedUp] = useState(false);
   const [pincodeError, setPincodeError] = useState("");
+  const prevPincodeRef = useRef(address.pincode);
 
   const updateField = useCallback(
     (field: keyof AddressData, value: string) => {
@@ -36,9 +37,16 @@ export function AddressFields({ address, onChange, idPrefix }: AddressFieldsProp
     [address, onChange]
   );
 
-  // Auto-lookup pincode when 6 digits entered
+  // Auto-lookup pincode when 6 digits entered, but skip if pincode hasn't
+  // actually changed (e.g. on initial load with saved data from the API).
   useEffect(() => {
     const pin = address.pincode.replace(/\s/g, "");
+    const prev = prevPincodeRef.current;
+    prevPincodeRef.current = address.pincode;
+
+    // Skip lookup if pincode didn't change (initial render / parent re-render)
+    if (pin === prev.replace(/\s/g, "")) return;
+
     if (pin.length === 6 && /^\d{6}$/.test(pin)) {
       setPincodeLoading(true);
       setPincodeError("");
