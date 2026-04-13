@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   LayoutDashboard,
   Settings,
@@ -15,7 +15,20 @@ import {
   Megaphone,
   Search,
   Palette,
+  LogOut,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "../ui/alert-dialog";
+import { logoutUser } from "../../Service/AuthService/authService";
+import { getCookie, removeCookie } from "../../utils/cookieUtils";
 
 import dashrobeLogo from "../../../assets/a78789c3d1496ae95d940d2dcd13ebf4260231d3.png";
 
@@ -34,10 +47,49 @@ export function AdminLayout() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [showLogoutMenu, setShowLogoutMenu] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const logoutMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (logoutMenuRef.current && !logoutMenuRef.current.contains(e.target as Node)) {
+        setShowLogoutMenu(false);
+      }
+    }
+    if (showLogoutMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showLogoutMenu]);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      const token = getCookie("token");
+      if (token) {
+        await logoutUser(token);
+      }
+    } catch {
+      // proceed with local cleanup even if API fails
+    } finally {
+      removeCookie("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("phoneNumber");
+      localStorage.removeItem("userType");
+      localStorage.removeItem("role");
+      localStorage.removeItem("newUser");
+      setLoggingOut(false);
+      setShowLogoutConfirm(false);
+      setShowLogoutMenu(false);
+      navigate("/login", { replace: true });
+    }
+  };
 
   const isActive = (path: string) => {
     if (path === "/admin") return location.pathname === "/admin";
@@ -240,16 +292,35 @@ export function AdminLayout() {
                 3
               </span> */}
             </button>
-            <div className="hidden sm:flex items-center gap-2.5 pl-2.5 ml-0.5 border-l border-border">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F0538] to-[#1a0a6e] flex items-center justify-center shadow-sm">
-                <Shield className="w-4 h-4 text-[#FFC100]" />
-              </div>
-              <div className="hidden lg:block">
-                <p style={{ fontSize: "13px", fontWeight: 600 }}>Admin User</p>
-                <p className="text-muted-foreground" style={{ fontSize: "11px" }}>
-                  Super Admin
-                </p>
-              </div>
+            <div className="hidden sm:block relative" ref={logoutMenuRef}>
+              <button
+                onClick={() => setShowLogoutMenu((prev) => !prev)}
+                className="flex items-center gap-2.5 pl-2.5 ml-0.5 border-l border-border cursor-pointer hover:opacity-80 transition-opacity"
+              >
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F0538] to-[#1a0a6e] flex items-center justify-center shadow-sm">
+                  <Shield className="w-4 h-4 text-[#FFC100]" />
+                </div>
+                <div className="hidden lg:block text-left">
+                  <p style={{ fontSize: "13px", fontWeight: 600 }}>Admin User</p>
+                  <p className="text-muted-foreground" style={{ fontSize: "11px" }}>
+                    Super Admin
+                  </p>
+                </div>
+              </button>
+              {showLogoutMenu && (
+                <div className="absolute right-0 top-full mt-1.5 w-40 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+                  <button
+                    onClick={() => {
+                      setShowLogoutMenu(false);
+                      setShowLogoutConfirm(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-destructive hover:bg-muted transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -261,6 +332,28 @@ export function AdminLayout() {
           </div>
         </main>
       </div>
+
+      {/* Logout confirmation dialog */}
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to logout? You will need to sign in again to access the admin portal.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loggingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {loggingOut ? "Logging out..." : "Logout"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

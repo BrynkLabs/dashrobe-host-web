@@ -1447,8 +1447,8 @@ export function AdminStores() {
                 <div className="mb-3">
                   <p className="text-muted-foreground" style={{ fontSize: "12px", fontWeight: 500 }}>Selected Categories</p>
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {vd.productCategories.selectedCategoryIds.map((catId) => (
-                      <span key={catId} className="bg-[#220E92]/8 text-[#220E92] px-3 py-1 rounded-full" style={{ fontSize: "12px", fontWeight: 600 }}>{catId}</span>
+                    {vd.productCategories.selectedCategories.map((cat) => (
+                      <span key={cat.id} className="bg-[#220E92]/8 text-[#220E92] px-3 py-1 rounded-full" style={{ fontSize: "12px", fontWeight: 600 }}>{cat.name}</span>
                     ))}
                   </div>
                 </div>

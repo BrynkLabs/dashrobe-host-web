@@ -5,7 +5,7 @@ import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { CircleAlert, Check, Loader2, Hash, IndianRupee, Tag, Paintbrush, PenLine, X, Shirt } from "lucide-react";
+import { CircleAlert, Check, Loader2, Hash, IndianRupee, Tag, Paintbrush, X, Shirt } from "lucide-react";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
@@ -36,7 +36,6 @@ export function ProductCategories() {
   const [avgPriceRange, setAvgPriceRange] = useState(pc.avgPriceRange);
   const [customizationAvailable, setCustomizationAvailable] = useState(pc.customizationAvailable);
   const [customCategoryText, setCustomCategoryText] = useState(pc.customCategoryText);
-  const [otherSelected, setOtherSelected] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
 
@@ -63,7 +62,6 @@ export function ProductCategories() {
             setCustomizationAvailable(sel.customizationAvailable ?? false);
             if (sel.customCategories) {
               setCustomCategoryText(sel.customCategories);
-              setOtherSelected(true);
             }
           }
         } catch {
@@ -102,18 +100,8 @@ export function ProductCategories() {
     );
   };
 
-  const toggleOther = () => {
-    setShowError(false);
-    setOtherSelected((prev) => {
-      if (prev) setCustomCategoryText("");
-      return !prev;
-    });
-  };
-
   const hasValidSelection = () => {
-    const hasApiSelection = selectedCategoryIds.length > 0 && selectedSubcategoryIds.length > 0;
-    const hasOtherSelection = otherSelected && customCategoryText.trim().length > 0;
-    return hasApiSelection || hasOtherSelection;
+    return selectedCategoryIds.length > 0 && selectedSubcategoryIds.length > 0;
   };
 
   const handleNext = async () => {
@@ -133,9 +121,7 @@ export function ProductCategories() {
         averagePriceRange: avgPriceRange,
         customizationAvailable,
       };
-      if (otherSelected && customCategoryText.trim()) {
-        payload.customCategories = customCategoryText.trim();
-      }
+
 
       await axiosClient.put(`/api/v1/onboarding/product-categories`, payload, {
         headers: { Authorization: `Bearer ${token}` },
@@ -276,78 +262,6 @@ export function ProductCategories() {
       }
     });
 
-    // "Other" category (local-only)
-    items.push(
-      <button
-        key="other"
-        type="button"
-        onClick={toggleOther}
-        className={`relative flex flex-col items-center justify-center text-center p-4 md:p-5 rounded-xl border-2 transition-all min-h-[100px] md:min-h-[110px] ${
-          otherSelected
-            ? "border-[#220E92] bg-[#220E92]/5 shadow-[0_0_0_1px_rgba(34,14,146,0.15)]"
-            : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-        }`}
-      >
-        {otherSelected && (
-          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#220E92] flex items-center justify-center">
-            <Check className="w-3 h-3 text-white" />
-          </div>
-        )}
-        <div className={`mb-2 ${otherSelected ? "text-[#220E92]" : "text-gray-400"}`}>
-          <PenLine className="w-5 h-5" />
-        </div>
-        <span className={`text-xs md:text-sm font-medium leading-tight ${otherSelected ? "text-[#220E92]" : "text-gray-700"}`}>
-          Other
-        </span>
-      </button>
-    );
-
-    if (otherSelected) {
-      items.push(
-        <div
-          key="sub-other"
-          style={{ gridColumn: "1 / -1" }}
-          className="bg-gradient-to-r from-[#220E92]/[0.03] to-[#220E92]/[0.06] border border-[#220E92]/15 rounded-xl p-4 md:p-5"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-[#220E92]/10 flex items-center justify-center text-[#220E92]">
-                <PenLine className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-sm font-semibold text-[#220E92]">Other</span>
-                <span className="text-xs text-gray-500 ml-2">— describe your category</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleOther();
-              }}
-              className="text-xs text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
-              title="Remove category"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="customCategory" className="text-sm text-[#220E92]">
-              What category do you sell? *
-            </Label>
-            <Input
-              id="customCategory"
-              placeholder="e.g., Accessories, Footwear, Bags, Innerwear..."
-              className="rounded-lg bg-white"
-              value={customCategoryText}
-              onChange={(e) => setCustomCategoryText(e.target.value)}
-            />
-            <p className="text-xs text-gray-500">Enter the category or product type that isn't listed above</p>
-          </div>
-        </div>
-      );
-    }
-
     return items;
   };
 
@@ -468,12 +382,12 @@ export function ProductCategories() {
       </div>
 
       {/* Selected Summary */}
-      {(selectedCategoryIds.length > 0 || otherSelected) && (
+      {selectedCategoryIds.length > 0 && (
         <div className="bg-[#220E92]/[0.03] rounded-xl border border-[#220E92]/10 p-4 md:p-6 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-[#220E92]">Your Selection</h4>
             <span className="text-xs text-gray-500">
-              {selectedCategoryIds.length + (otherSelected ? 1 : 0)} {selectedCategoryIds.length + (otherSelected ? 1 : 0) === 1 ? "category" : "categories"}
+              {selectedCategoryIds.length} {selectedCategoryIds.length === 1 ? "category" : "categories"}
             </span>
           </div>
           <div className="space-y-2">
@@ -498,20 +412,6 @@ export function ProductCategories() {
                 </div>
               );
             })}
-            {otherSelected && (
-              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2.5 py-2 px-3 rounded-lg bg-white">
-                <span className="text-sm text-gray-800 font-medium whitespace-nowrap">Other</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {customCategoryText.trim() ? (
-                    <span className="text-xs bg-[#220E92]/10 text-[#220E92] px-2 py-0.5 rounded-md">
-                      {customCategoryText}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-amber-600 italic">Enter your custom category</span>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

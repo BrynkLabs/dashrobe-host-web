@@ -68,6 +68,10 @@ export type VendorDetailData = {
   } | null;
   productCategories: {
     selectedCategoryIds: number[];
+    selectedSubcategoryIds: number[];
+    selectedCategories: { id: number; name: string }[];
+    selectedSubcategories: { id: number; name: string }[];
+    customCategories: string | null;
     skuCountApprox: number;
     pricingType: string;
     averagePriceRange: string;

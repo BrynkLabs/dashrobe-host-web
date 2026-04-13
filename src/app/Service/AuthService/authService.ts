@@ -43,3 +43,13 @@ export const loginUser = async (phone: string, role: LoginRole) => {
 
   return res.data.data;
 };
+
+export const logoutUser = async (token: string) => {
+  const res = await axios.post(`${BACKEND}/v1/auth/logout`, "", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return res.data;
+};
