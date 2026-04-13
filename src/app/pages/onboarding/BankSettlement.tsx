@@ -5,7 +5,7 @@ import { Label } from "../../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2, Upload } from "lucide-react";
 import { useState, useEffect } from "react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
@@ -166,8 +166,8 @@ export function BankSettlement() {
       setIfscError("Invalid IFSC format. Must be 4 letters, followed by 0, then 6 alphanumeric characters (e.g., SBIN0001234)");
       return;
     }
-    if (!bank.gstCertificateUploaded) {
-      setGstError("GST Certificate is mandatory. Please upload before continuing.");
+    if (!bank.ownerPANUploaded) {
+      setGstError("Owner PAN Card is mandatory. Please upload before continuing.");
       return;
     }
     setGstError("");
@@ -340,8 +340,8 @@ export function BankSettlement() {
       </div>
 
       {/* Document Uploads */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-5 shadow-sm">
+        <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#220E92]/8 flex items-center justify-center">
             <FileText className="w-5 h-5 text-[#220E92]" />
           </div>
@@ -355,88 +355,130 @@ export function BankSettlement() {
           </div>
         )}
 
+        {/* GST Certificate */}
         <div className="space-y-2">
-          <Label htmlFor="gstCertificate" className="flex items-center gap-1.5">
-            GST Certificate <span className="text-red-500">*</span>
-            <span className="text-xs text-red-500 font-medium bg-red-50 px-1.5 py-0.5 rounded">Mandatory</span>
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
+          <p className="text-sm font-medium text-gray-900">GST Certificate</p>
+          <label
+            htmlFor="gstCertificate"
+            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${gstUploading ? "opacity-60 pointer-events-none" : ""}`}
+          >
+            {gstUploading ? (
+              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+            ) : bank.gstCertificateUploaded ? (
+              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+            ) : (
+              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+            )}
+            <span className="text-sm text-gray-400">{bank.gstCertificateUploaded ? "Uploaded" : "Upload"}</span>
+            <input
               id="gstCertificate"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
+              className="hidden"
               onChange={(e) =>
                 handleFileChange(e, "GST_CERTIFICATE", setGstUploading, setDocGstS3Key, (field) =>
                   updateBankSettlement(field as any)
                 )
               }
-              className="rounded-xl"
               disabled={gstUploading}
             />
-            {gstUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
-            {bank.gstCertificateUploaded && !gstUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
-          </div>
+          </label>
         </div>
 
+        {/* Business PAN Card */}
         <div className="space-y-2">
-          <Label htmlFor="businessPAN">Business PAN Card *</Label>
-          <div className="flex items-center gap-2">
-            <Input
+          <p className="text-sm font-medium text-gray-900">Business PAN Card</p>
+          <label
+            htmlFor="businessPAN"
+            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${businessPanUploading ? "opacity-60 pointer-events-none" : ""}`}
+          >
+            {businessPanUploading ? (
+              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+            ) : bank.businessPANUploaded ? (
+              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+            ) : (
+              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+            )}
+            <span className="text-sm text-gray-400">{bank.businessPANUploaded ? "Uploaded" : "Upload"}</span>
+            <input
               id="businessPAN"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
+              className="hidden"
               onChange={(e) =>
                 handleFileChange(e, "BUSINESS_PAN", setBusinessPanUploading, setDocBusinessPanS3Key, (field) =>
                   updateBankSettlement(field as any)
                 )
               }
-              className="rounded-xl"
               disabled={businessPanUploading}
             />
-            {businessPanUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
-            {bank.businessPANUploaded && !businessPanUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
-          </div>
+          </label>
         </div>
 
+        {/* Owner PAN Card - Mandatory */}
         <div className="space-y-2">
-          <Label htmlFor="ownerPAN">Owner PAN Card *</Label>
-          <div className="flex items-center gap-2">
-            <Input
+          <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
+            Owner PAN Card <span className="text-red-500">*</span>
+            <span className="text-xs text-red-500 bg-[#FEF2F2] p-1 rounded font-medium">Mandatory</span>
+          </p>
+          <label
+            htmlFor="ownerPAN"
+            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${ownerPanUploading ? "opacity-60 pointer-events-none" : ""}`}
+          >
+            {ownerPanUploading ? (
+              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+            ) : bank.ownerPANUploaded ? (
+              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+            ) : (
+              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+            )}
+            <span className="text-sm text-gray-400">{bank.ownerPANUploaded ? "Uploaded" : "Upload"}</span>
+            <input
               id="ownerPAN"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
+              className="hidden"
               onChange={(e) =>
                 handleFileChange(e, "OWNER_PAN", setOwnerPanUploading, setDocOwnerPanS3Key, (field) =>
                   updateBankSettlement(field as any)
                 )
               }
-              className="rounded-xl"
               disabled={ownerPanUploading}
             />
-            {ownerPanUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
-            {bank.ownerPANUploaded && !ownerPanUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
-          </div>
+          </label>
         </div>
 
+        {/* Bank Proof Document */}
         <div className="space-y-2">
-          <Label htmlFor="bankProof">Bank Proof Document *</Label>
-          <p className="text-xs text-gray-600 mb-2">Cancelled cheque or bank passbook</p>
-          <div className="flex items-center gap-2">
-            <Input
+          <div>
+            <p className="text-sm font-medium text-gray-900">Bank Proof Document</p>
+            <p className="text-xs text-gray-500">Cancelled cheque or bank passbook</p>
+          </div>
+          <label
+            htmlFor="bankProof"
+            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${bankProofUploading ? "opacity-60 pointer-events-none" : ""}`}
+          >
+            {bankProofUploading ? (
+              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+            ) : bank.bankProofUploaded ? (
+              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+            ) : (
+              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+            )}
+            <span className="text-sm text-gray-400">{bank.bankProofUploaded ? "Uploaded" : "Upload"}</span>
+            <input
               id="bankProof"
               type="file"
               accept=".pdf, .jpg, .jpeg, .png"
+              className="hidden"
               onChange={(e) =>
                 handleFileChange(e, "BANK_PROOF", setBankProofUploading, setDocBankProofS3Key, (field) =>
                   updateBankSettlement(field as any)
                 )
               }
-              className="rounded-xl"
               disabled={bankProofUploading}
             />
-            {bankProofUploading && <Loader2 className="w-5 h-5 animate-spin text-[#220E92]" />}
-            {bank.bankProofUploaded && !bankProofUploading && <CircleCheck className="w-5 h-5 text-green-500" />}
-          </div>
+          </label>
         </div>
       </div>
 

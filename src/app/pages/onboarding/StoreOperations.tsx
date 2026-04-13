@@ -92,11 +92,12 @@ export function StoreOperations() {
   const applyToAll = useCallback(
     (index: number) => {
       const source = ops.schedule[index];
-      const newSchedule = ops.schedule.map((s) =>
-        s.isOpen
-          ? { ...s, openTime: source.openTime, closeTime: source.closeTime }
-          : s
-      );
+      const newSchedule = ops.schedule.map((s) => ({
+        ...s,
+        isOpen: true,
+        openTime: source.openTime,
+        closeTime: source.closeTime,
+      }));
       updateStoreOperations({ schedule: newSchedule });
     },
     [ops.schedule, updateStoreOperations]
@@ -452,7 +453,7 @@ export function StoreOperations() {
                 label={option.label}
                 selected={ops.packingTime === option.id}
                 onClick={() =>
-                  updateStoreOperations({ packingTime: option.id })
+                  updateStoreOperations({ packingTime: ops.packingTime === option.id ? "" : option.id })
                 }
               />
             ))}

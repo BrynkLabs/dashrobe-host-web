@@ -102,23 +102,23 @@ export default function LoginPage() {
   }, [step, resendOtpTrigger]);
 
   return (
-    <div className="flex h-screen p-5">
+    <div className="flex h-screen md:p-5">
       {/* LEFT SIDE */}
-      <div className="w-1/2 flex flex-col justify-center items-center bg-[#F3F4F6]">
+      <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-[#F3F4F6] px-5">
         <img src={loginLogo} className="w-20 mb-6" />
 
         {step === "mobile" && (
           <>
-            <h1 className="text-3xl font-semibold mb-2 text-[#101828]">
+            <h1 className="text-2xl md:text-3xl font-semibold mb-2 text-[#101828]">
               Log in / Sign up
             </h1>
-            <p className="text-gray-500 font-[400] mb-6">
+            <p className="text-gray-500 font-[400] mb-6 text-sm md:text-base">
               Enter your mobile number
             </p>
 
-            <div>
+            <div className="w-full max-w-[390px]">
               <input
-                className={`border rounded-lg px-4 py-3 w-[390px] ${
+                className={`border rounded-lg px-4 py-3 w-full ${
                   mobileError ? "mb-1" : "mb-4"
                 }`}
                 placeholder="Enter your mobile number"
@@ -136,13 +136,13 @@ export default function LoginPage() {
 
             <button
               onClick={handleGenerateOtp}
-              className="bg-[#220E92] text-white w-[390px] py-3 rounded-lg"
+              className="bg-[#220E92] text-white w-full max-w-[390px] py-3 rounded-lg"
             >
               {loading ? "Sending..." : "Continue with Mobile Number"}
             </button>
 
-            <div className="mt-4 bg-[#F0FDF4] text-[#016630] p-2 rounded-lg w-[390px] text-[12px] flex items-center">
-              <img src={chatIcon} className="w-4 mr-2" />
+            <div className="mt-4 bg-[#F0FDF4] text-[#016630] p-2 rounded-lg w-full max-w-[390px] text-[12px] flex items-center">
+              <img src={chatIcon} className="w-4 mr-2 shrink-0" />
               WhatsApp is mandatory on this number. All order updates and
               communication will be sent via WhatsApp.
             </div>
@@ -157,9 +157,9 @@ export default function LoginPage() {
               Enter OTP sent to your number on whatsapp
             </p>
 
-            <div>
+            <div className="w-full max-w-[390px]">
               <input
-                className={`border rounded-lg px-4 py-3 w-[390px] ${
+                className={`border rounded-lg px-4 py-3 w-full ${
                   otpError ? "mb-1" : "mb-4"
                 }`}
                 placeholder="Enter OTP"
@@ -176,12 +176,12 @@ export default function LoginPage() {
 
             <button
               onClick={handleVerifyOtp}
-              className="bg-[#2C1A9E] text-white w-[390px] py-3 rounded-lg"
+              className="bg-[#2C1A9E] text-white w-full max-w-[390px] py-3 rounded-lg"
             >
               {loading ? "Verifying..." : "Verify OTP"}
             </button>
 
-            <div className="flex justify-between w-[320px] mt-4 text-sm">
+            <div className="flex justify-between w-full max-w-[320px] mt-4 text-sm">
               <button
                 className="text-[#220E92] font-[500]"
                 onClick={() => {
@@ -215,8 +215,8 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* RIGHT SIDE */}
-      <div className="w-1/2 flex items-center justify-center">
+      {/* RIGHT SIDE - hidden on mobile */}
+      <div className="hidden md:flex w-1/2 items-center justify-center">
         <img
           src={loginBanner}
           className="w-full h-full opacity-80"
