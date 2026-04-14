@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -7,7 +7,7 @@ import { Switch } from "../../components/ui/switch";
 import { TimeChip } from "../../components/onboarding/TimeChip";
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { Clock, MapPin, Copy, CopyCheck, Loader2 } from "lucide-react";
+import { Clock, MapPin, Copy, CopyCheck, Loader2, AlertCircle } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
 
@@ -65,6 +65,7 @@ export function StoreOperations() {
             preparationTime: d.orderPreparationTime || "",
             packingTime: d.averagePackingTime || "",
             readyFor30Min: d.readyFor30MinDelivery ?? false,
+            deliveryCoverage: d.deliveryCoverageKm ?? 1,
           });
         }
       } catch (e) {
@@ -144,6 +145,7 @@ export function StoreOperations() {
 
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
   const handleNext = async () => {
     setApiError("");
@@ -169,6 +171,7 @@ export function StoreOperations() {
         orderPreparationTime: ops.preparationTime,
         averagePackingTime: ops.packingTime,
         readyFor30MinDelivery: ops.readyFor30Min,
+        deliveryCoverageKm: ops.deliveryCoverage,
       };
 
       const token = getCookie("token");
@@ -187,6 +190,7 @@ export function StoreOperations() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +208,7 @@ export function StoreOperations() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">
           Store Operations
         </h2>
@@ -212,6 +216,13 @@ export function StoreOperations() {
           Configure your store operational details
         </p>
       </div>
+
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
 
       {/* Store Information */}
       <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-6 shadow-sm">
@@ -475,13 +486,39 @@ export function StoreOperations() {
             onCheckedChange={(v) => updateStoreOperations({ readyFor30Min: v })}
           />
         </div>
+
+        {/* Preferred Delivery Coverage */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Preferred Delivery Coverage *</Label>
+            <span className="text-sm font-semibold text-[#220E92]">
+              {ops.deliveryCoverage} km
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={9}
+            step={1}
+            value={[1,5,10,15,20,25,30,35,40,45].indexOf(ops.deliveryCoverage)}
+            onChange={(e) => {
+              const steps = [1,5,10,15,20,25,30,35,40,45];
+              updateStoreOperations({ deliveryCoverage: steps[Number(e.target.value)] });
+            }}
+            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-[#220E92]"
+            style={{
+              background: `linear-gradient(to right, #220E92 ${([1,5,10,15,20,25,30,35,40,45].indexOf(ops.deliveryCoverage) / 9) * 100}%, #e5e7eb ${([1,5,10,15,20,25,30,35,40,45].indexOf(ops.deliveryCoverage) / 9) * 100}%)`,
+            }}
+          />
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>1 km</span>
+            <span>45 km</span>
+          </div>
+        </div>
       </div>
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-        {apiError && (
-          <p className="text-sm text-red-500 text-right">{apiError}</p>
-        )}
         <Button
           onClick={handleBack}
           variant="outline"

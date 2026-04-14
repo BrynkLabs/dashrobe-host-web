@@ -153,7 +153,7 @@ const defaultOnboardingData: OnboardingData = {
     packingTime: "",
     readyFor30Min: false,
     packaging: "",
-    deliveryCoverage: 5,
+    deliveryCoverage: 1,
   },
   productCategories: {
     selectedCategories: [],

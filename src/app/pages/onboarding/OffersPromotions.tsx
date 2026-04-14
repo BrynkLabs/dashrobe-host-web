@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "../../components/ui/button";
 import { Switch } from "../../components/ui/switch";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import {
   Tag, CalendarCheck, Megaphone, Info, Percent, ShoppingBag, Gift, Lock, Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
@@ -17,6 +18,7 @@ export function OffersPromotions() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchOffersPromotions = async () => {
@@ -56,6 +58,7 @@ export function OffersPromotions() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +76,7 @@ export function OffersPromotions() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">
           Offers & Promotions
         </h2>
@@ -81,6 +84,13 @@ export function OffersPromotions() {
           Set up introductory offers to attract customers when your store goes live
         </p>
       </div>
+
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
 
       {/* ──────────────── Section 1: Discount Types ──────────────── */}
       <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-5 shadow-sm">
@@ -185,9 +195,6 @@ export function OffersPromotions() {
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-        {apiError && (
-          <p className="text-sm text-red-500 text-right">{apiError}</p>
-        )}
         <Button
           onClick={handleBack}
           variant="outline"

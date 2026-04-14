@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
@@ -38,6 +38,7 @@ export function ProductCategories() {
   const [customCategoryText, setCustomCategoryText] = useState(pc.customCategoryText);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
   // Fetch categories and vendor's previous selections on mount
   useEffect(() => {
@@ -107,6 +108,7 @@ export function ProductCategories() {
   const handleNext = async () => {
     if (!hasValidSelection()) {
       setShowError(true);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       return;
     }
     setApiError("");
@@ -142,6 +144,7 @@ export function ProductCategories() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setSubmitting(false);
     }
@@ -275,10 +278,26 @@ export function ProductCategories() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Product Categories</h2>
         <p className="text-sm md:text-base text-gray-600">Select the clothing categories and sub-categories you sell</p>
       </div>
+
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
+
+      {showError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">
+            Please select at least one category and one sub-category to continue.
+          </p>
+        </div>
+      )}
 
       {/* Product Details */}
       <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-6 shadow-sm">
@@ -416,21 +435,8 @@ export function ProductCategories() {
         </div>
       )}
 
-      {/* Validation Error */}
-      {showError && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">
-            Please select at least one category and one sub-category to continue.
-          </p>
-        </div>
-      )}
-
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-        {apiError && (
-          <p className="text-sm text-red-500 text-right">{apiError}</p>
-        )}
         <Button
           onClick={handleBack}
           variant="outline"

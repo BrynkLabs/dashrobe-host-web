@@ -5,8 +5,8 @@ import { Label } from "../../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2, Upload } from "lucide-react";
-import { useState, useEffect } from "react";
+import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2, Upload, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
 
@@ -30,6 +30,7 @@ export function BankSettlement() {
   const [accountMismatch, setAccountMismatch] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
   const [gstError, setGstError] = useState("");
   const [ifscError, setIfscError] = useState("");
 
@@ -103,7 +104,7 @@ export function BankSettlement() {
         setIfscError("");
         setTimeout(() => updateBankSettlement({ bankVerified: true }), 500);
       } else {
-        setIfscError("Invalid IFSC format. Must be 4 letters, followed by 0, then 6 alphanumeric characters (e.g., SBIN0001234)");
+        setIfscError("Invalid IFSC format");
       }
     } else {
       setIfscError("");
@@ -142,6 +143,7 @@ export function BankSettlement() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Upload failed";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setUploading(false);
     }
@@ -163,7 +165,7 @@ export function BankSettlement() {
   const handleNext = async () => {
     if (accountMismatch) return;
     if (bank.ifscCode && !isValidIfsc(bank.ifscCode)) {
-      setIfscError("Invalid IFSC format. Must be 4 letters, followed by 0, then 6 alphanumeric characters (e.g., SBIN0001234)");
+      setIfscError("Invalid IFSC format");
       return;
     }
     if (!bank.ownerPANUploaded) {
@@ -197,6 +199,7 @@ export function BankSettlement() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setSubmitting(false);
     }
@@ -214,10 +217,17 @@ export function BankSettlement() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Bank & Settlement Details</h2>
         <p className="text-sm md:text-base text-gray-600">Add your bank account information for settlements</p>
       </div>
+
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
 
       {/* Important Notice */}
       <div className="bg-gradient-to-r from-yellow-50 to-amber-50/50 border border-yellow-200 rounded-2xl p-4 md:p-6 flex items-start gap-3">
@@ -265,7 +275,7 @@ export function BankSettlement() {
             <Label htmlFor="accountNumber">Account Number *</Label>
             <Input
               id="accountNumber"
-              type="text"
+              type="password"
               placeholder="Enter account number"
               className="rounded-xl"
               value={bank.accountNumber}
@@ -484,9 +494,6 @@ export function BankSettlement() {
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-        {apiError && (
-          <p className="text-sm text-red-500 text-right">{apiError}</p>
-        )}
         <Button
           onClick={handleBack}
           variant="outline"
