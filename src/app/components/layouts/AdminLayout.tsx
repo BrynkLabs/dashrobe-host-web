@@ -184,19 +184,18 @@ export function AdminLayout() {
         {/* Collapse button */}
         <div className="px-2.5 pb-4 pt-2 border-t border-white/8">
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => {
+              setShowLogoutMenu(false);
+              setShowLogoutConfirm(true);
+            }}
             className={`w-full flex items-center gap-2 text-white/40 hover:text-white/70 py-1.5 rounded-lg hover:bg-white/6 transition-all ${
               collapsed ? "justify-center" : "px-3"
             }`}
           >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <>
-                <ChevronLeft className="w-4 h-4" />
-                <span style={{ fontSize: "12px" }}>Collapse</span>
-              </>
-            )}
+            <>
+              <span className="text-sm font-medium text-[#FFFFFF]">Logout</span>
+              <LogOut className="h-5 w-5 ml-auto text-[#D6BBFB]"/>
+            </>
           </button>
         </div>
       </aside>
@@ -211,7 +210,7 @@ export function AdminLayout() {
 
       {/* Mobile Sidebar */}
       <aside
-        className={`md:hidden fixed inset-y-0 left-0 z-50 w-[240px] transform transition-transform duration-300 ${
+        className={`md:hidden fixed inset-y-0 left-0 z-50 w-[240px] flex flex-col transform transition-transform duration-300 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         style={{ background: "linear-gradient(180deg, #0F0538 0%, #0a0328 60%, #06021a 100%)" }}
@@ -236,30 +235,44 @@ export function AdminLayout() {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <nav className="px-2.5 space-y-0.5">
-          {navItems.map((item) => {
-            const active = isActive(item.path);
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all relative ${
-                  active
-                    ? "bg-white/12 text-white"
-                    : "text-white/55 hover:bg-white/6 hover:text-white/85"
-                }`}
-              >
-                {active && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#FFC100]" />
-                )}
-                <item.icon className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#FFC100]" : ""}`} />
-                <span style={{ fontSize: "12.5px", fontWeight: active ? 600 : 400 }}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </nav>
+        <div className="flex flex-col flex-1 min-h-0">
+          <nav className="px-2.5 space-y-0.5 flex-1 overflow-y-auto">
+            {navItems.map((item) => {
+              const active = isActive(item.path);
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all relative ${
+                    active
+                      ? "bg-white/12 text-white"
+                      : "text-white/55 hover:bg-white/6 hover:text-white/85"
+                  }`}
+                >
+                  {active && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#FFC100]" />
+                  )}
+                  <item.icon className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#FFC100]" : ""}`} />
+                  <span style={{ fontSize: "12.5px", fontWeight: active ? 600 : 400 }}>
+                    {item.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+          <div className="px-2.5 pb-4 pt-2 border-t border-white/8 mt-auto">
+            <button
+              onClick={() => {
+                setShowLogoutMenu(false);
+                setShowLogoutConfirm(true);
+              }}
+              className="w-full flex items-center gap-2 text-white/40 hover:text-white/70 py-1.5 rounded-lg hover:bg-white/6 transition-all px-3"
+            >
+              <span className="text-sm font-medium text-[#FFFFFF]">Logout</span>
+              <LogOut className="h-5 w-5 ml-auto text-[#D6BBFB]"/>
+            </button>
+          </div>
+        </div>
       </aside>
 
       {/* Main content area */}
@@ -337,17 +350,20 @@ export function AdminLayout() {
       <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Logout</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to logout? You will need to sign in again to access the admin portal.
+            <AlertDialogHeader className="flex flex-row items-center gap-4">
+              <LogOut className="w-10 h-10 text-destructive bg-[#FEF2F2] p-2 rounded-full" />
+              <AlertDialogTitle>Do you want to Logout?</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription className="text-sm text-[#1A1A2E]">
+              Are you sure you want to logout ?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loggingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="flex-1 h-[43px]" disabled={loggingOut}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogout}
               disabled={loggingOut}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-[#E7000B]/60 text-white hover:bg-[#E7000B]/80 flex-1 h-[43px]"
             >
               {loggingOut ? "Logging out..." : "Logout"}
             </AlertDialogAction>

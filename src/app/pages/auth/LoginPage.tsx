@@ -10,6 +10,7 @@ import { getCookie, setCookie } from "@/app/utils/cookieUtils";
 import loginLogo from "@/assets/login-logo.png";
 import chatIcon from "@/assets/icons/chat-icon.png";
 import loginBanner from "@/assets/login-banner.png";
+import { set } from "date-fns";
 
 const ROLE_REDIRECT: Record<string, string> = {
   SUPERADMIN: "/admin",
@@ -207,6 +208,8 @@ export default function LoginPage({ role }: LoginPageProps) {
                 onClick={() => {
                   setOtp("");
                   setStep("mobile");
+                  setMobileError("");
+                  setOtpError("");
                 }}
               >
                 Edit Number

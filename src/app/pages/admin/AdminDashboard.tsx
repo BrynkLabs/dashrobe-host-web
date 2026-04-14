@@ -266,7 +266,7 @@ export function AdminDashboard() {
                         className="text-muted-foreground"
                         style={{ fontSize: "12px" }}
                       >
-                        {s.submittedAt.split("T")[0]}
+                        {s.submittedAt?.split("T")[0]}
                       </span>
                     </td>
                     <td className="px-4 py-3">

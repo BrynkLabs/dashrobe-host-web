@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -8,7 +8,6 @@ import { VerificationBadge } from "../../components/onboarding/VerificationBadge
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../components/ui/input-otp";
 import { Building2, Users, FileText, Phone, ShieldCheck, Loader2, MessageCircle, Briefcase, MoreHorizontal, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "../../components/ui/alert";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { generateOtp, verifyOtp } from "@/app/Service/AuthService/authService";
@@ -84,14 +83,16 @@ export function VendorBasicDetails() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Phone verification UI state (not persisted to context)
-  const [phoneOtpSent, setPhoneOtpSent] = useState(false);
-  const [phoneOtpValue, setPhoneOtpValue] = useState("");
-  const [phoneSending, setPhoneSending] = useState(false);
-  const [phoneVerifying, setPhoneVerifying] = useState(false);
-  const [phoneResendTimer, setPhoneResendTimer] = useState(0);
-  const [phoneError, setPhoneError] = useState("");
+  // Prefill primary phone from localStorage (logged-in user's number)
+  useEffect(() => {
+    const storedPhone = localStorage.getItem("phoneNumber");
+    if (storedPhone) {
+      updateVendorBasicDetails({ phone: normalizePhone(storedPhone), phoneVerified: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Phone verification UI state (not persisted to context)
   const [altPhoneOtpSent, setAltPhoneOtpSent] = useState(false);
   const [altPhoneOtpValue, setAltPhoneOtpValue] = useState("");
   const [altPhoneSending, setAltPhoneSending] = useState(false);
@@ -99,17 +100,9 @@ export function VendorBasicDetails() {
   const [altPhoneResendTimer, setAltPhoneResendTimer] = useState(0);
   const [altPhoneError, setAltPhoneError] = useState("");
 
-  const [phoneTokenRefId, setPhoneTokenRefId] = useState("");
   const [altPhoneTokenRefId, setAltPhoneTokenRefId] = useState("");
 
-  // Countdown timers
-  useEffect(() => {
-    if (phoneResendTimer > 0) {
-      const t = setTimeout(() => setPhoneResendTimer(phoneResendTimer - 1), 1000);
-      return () => clearTimeout(t);
-    }
-  }, [phoneResendTimer]);
-
+  // Countdown timer for alt phone
   useEffect(() => {
     if (altPhoneResendTimer > 0) {
       const t = setTimeout(() => setAltPhoneResendTimer(altPhoneResendTimer - 1), 1000);
@@ -119,67 +112,50 @@ export function VendorBasicDetails() {
 
   const isValidPhone = (val: string) => /^(\+91\s?)?[6-9]\d{9}$/.test(val.replace(/\s/g, ""));
 
-  const handleSendOtp = useCallback(async (type: "primary" | "alt") => {
-    const num = type === "primary" ? vbd.phone : vbd.altPhone;
-    const setError = type === "primary" ? setPhoneError : setAltPhoneError;
-    const setSending = type === "primary" ? setPhoneSending : setAltPhoneSending;
-    const setOtpSent = type === "primary" ? setPhoneOtpSent : setAltPhoneOtpSent;
-    const setTimer = type === "primary" ? setPhoneResendTimer : setAltPhoneResendTimer;
-    const setOtpValue = type === "primary" ? setPhoneOtpValue : setAltPhoneOtpValue;
-    const setTokenRefId = type === "primary" ? setPhoneTokenRefId : setAltPhoneTokenRefId;
-
-    if (!isValidPhone(num)) {
-      setError("Enter a valid 10-digit phone number");
+  const handleSendOtp = useCallback(async () => {
+    if (!isValidPhone(vbd.altPhone)) {
+      setAltPhoneError("Enter a valid 10-digit phone number");
       return;
     }
-    setError("");
-    setSending(true);
-    setOtpValue("");
+    setAltPhoneError("");
+    setAltPhoneSending(true);
+    setAltPhoneOtpValue("");
     try {
-      const fullPhone = `91${normalizePhone(num)}`;
+      const fullPhone = `91${normalizePhone(vbd.altPhone)}`;
       const data = await generateOtp(fullPhone);
-      setTokenRefId(data.token_reference_id);
-      setOtpSent(true);
-      setTimer(30);
+      setAltPhoneTokenRefId(data.token_reference_id);
+      setAltPhoneOtpSent(true);
+      setAltPhoneResendTimer(30);
     } catch (e) {
       console.error(e);
-      setError("Failed to send OTP. Please try again.");
+      setAltPhoneError("Failed to send OTP. Please try again.");
     } finally {
-      setSending(false);
+      setAltPhoneSending(false);
     }
-  }, [vbd.phone, vbd.altPhone]);
+  }, [vbd.altPhone]);
 
-  const handleVerifyOtp = useCallback(async (type: "primary" | "alt") => {
-    const otpVal = type === "primary" ? phoneOtpValue : altPhoneOtpValue;
-    const num = type === "primary" ? vbd.phone : vbd.altPhone;
-    const tokenRefId = type === "primary" ? phoneTokenRefId : altPhoneTokenRefId;
-    const setError = type === "primary" ? setPhoneError : setAltPhoneError;
-    const setVerifying = type === "primary" ? setPhoneVerifying : setAltPhoneVerifying;
-
-    if (otpVal.length !== 4) {
-      setError("Please enter the complete 4-digit OTP");
+  const handleVerifyOtp = useCallback(async () => {
+    if (altPhoneOtpValue.length !== 4) {
+      setAltPhoneError("Please enter the complete 4-digit OTP");
       return;
     }
-    setError("");
-    setVerifying(true);
+    setAltPhoneError("");
+    setAltPhoneVerifying(true);
     try {
-      const fullPhone = `91${normalizePhone(num)}`;
-      await verifyOtp(fullPhone, otpVal, tokenRefId);
-      if (type === "primary") {
-        updateVendorBasicDetails({ phoneVerified: true });
-      } else {
-        updateVendorBasicDetails({ altPhoneVerified: true });
-      }
+      const fullPhone = `91${normalizePhone(vbd.altPhone)}`;
+      await verifyOtp(fullPhone, altPhoneOtpValue, altPhoneTokenRefId);
+      updateVendorBasicDetails({ altPhoneVerified: true });
     } catch (e) {
       console.error(e);
-      setError("OTP verification failed. Please try again.");
+      setAltPhoneError("OTP verification failed. Please try again.");
     } finally {
-      setVerifying(false);
+      setAltPhoneVerifying(false);
     }
-  }, [phoneOtpValue, altPhoneOtpValue, vbd.phone, vbd.altPhone, phoneTokenRefId, altPhoneTokenRefId, updateVendorBasicDetails]);
+  }, [altPhoneOtpValue, vbd.altPhone, altPhoneTokenRefId, updateVendorBasicDetails]);
 
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
   const handleNext = async () => {
     setApiError("");
@@ -232,6 +208,7 @@ export function VendorBasicDetails() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setSubmitting(false);
     }
@@ -255,10 +232,17 @@ export function VendorBasicDetails() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Vendor Basic Details</h2>
         <p className="text-sm md:text-base text-gray-600">Let's start with your business information</p>
       </div>
+
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 lg:p-8 space-y-6">
         {/* Business Names */}
@@ -380,102 +364,23 @@ export function VendorBasicDetails() {
             </div>
           </div>
 
-        {/* Primary Phone with OTP Verification */}
+        {/* Primary Phone (prefilled from logged-in user, always disabled) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <div className="space-y-3">
             <Label htmlFor="phone">Phone Number *</Label>
-            <div className="flex gap-2">
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+91 XXXXX XXXXX"
-                className="rounded-xl flex-1"
-                maxLength={10}
-                value={vbd.phone}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                  updateVendorBasicDetails({ phone: val });
-                  if (vbd.phoneVerified) {
-                    updateVendorBasicDetails({ phoneVerified: false });
-                    setPhoneOtpSent(false);
-                    setPhoneOtpValue("");
-                  }
-                }}
-                disabled={vbd.phoneVerified}
-              />
-              {!vbd.phoneVerified && !phoneOtpSent && (
-                <Button
-                  type="button"
-                  onClick={() => handleSendOtp("primary")}
-                  disabled={phoneSending || !vbd.phone}
-                  style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
-                  className="shrink-0 px-4 text-xs"
-                >
-                  {phoneSending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Phone className="w-3.5 h-3.5 mr-1.5" />
-                      Send OTP
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="+91 XXXXX XXXXX"
+              className="rounded-xl bg-gray-50"
+              maxLength={10}
+              value={vbd.phone}
+              disabled
+            />
             <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
               <MessageCircle className="w-3.5 h-3.5 text-green-600 shrink-0" />
               <p className="text-xs text-green-800">WhatsApp is mandatory on this number. All order updates and communication will be sent via WhatsApp.</p>
             </div>
-
-            {phoneOtpSent && !vbd.phoneVerified && (
-              <div className="space-y-3 p-4 bg-purple-50/60 rounded-2xl border border-purple-100 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center gap-2 text-sm text-[#220E92]">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Enter the 4-digit OTP sent to <span className="font-medium">{vbd.phone}</span></span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <InputOTP
-                    maxLength={4}
-                    value={phoneOtpValue}
-                    onChange={setPhoneOtpValue}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={1} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={2} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={3} className="w-10 h-10 rounded-lg border-purple-200" />
-                    </InputOTPGroup>
-                  </InputOTP>
-                  <Button
-                    type="button"
-                    onClick={() => handleVerifyOtp("primary")}
-                    disabled={phoneVerifying || phoneOtpValue.length !== 4}
-                    style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
-                    className="shrink-0 px-4 text-xs h-10"
-                  >
-                    {phoneVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  {phoneResendTimer > 0 ? (
-                    <span>Resend OTP in <span className="font-medium text-[#220E92]">{phoneResendTimer}s</span></span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleSendOtp("primary")}
-                      className="text-[#220E92] font-medium hover:underline cursor-pointer"
-                    >
-                      Resend OTP
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {phoneError && (
-              <p className="text-xs text-red-500">{phoneError}</p>
-            )}
-            <VerificationBadge verified={vbd.phoneVerified} label="Phone Verified" />
           </div>
 
           {/* Alternate Phone with OTP Verification */}
@@ -503,7 +408,7 @@ export function VendorBasicDetails() {
               {!vbd.altPhoneVerified && !altPhoneOtpSent && vbd.altPhone && (
                 <Button
                   type="button"
-                  onClick={() => handleSendOtp("alt")}
+                  onClick={() => handleSendOtp()}
                   disabled={altPhoneSending || !vbd.altPhone}
                   variant="outline"
                   className="shrink-0 px-4 text-xs border-[#220E92] text-[#220E92] hover:bg-purple-50"
@@ -542,7 +447,7 @@ export function VendorBasicDetails() {
                   </InputOTP>
                   <Button
                     type="button"
-                    onClick={() => handleVerifyOtp("alt")}
+                    onClick={() => handleVerifyOtp()}
                     disabled={altPhoneVerifying || altPhoneOtpValue.length !== 4}
                     style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
                     className="shrink-0 px-4 text-xs h-10"
@@ -556,7 +461,7 @@ export function VendorBasicDetails() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handleSendOtp("alt")}
+                      onClick={() => handleSendOtp()}
                       className="text-[#220E92] font-medium hover:underline cursor-pointer"
                     >
                       Resend OTP
@@ -585,27 +490,27 @@ export function VendorBasicDetails() {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-[#220E92] flex items-center justify-center text-white text-xs font-medium">2</div>
-              <h4 className="text-sm font-semibold text-gray-800">Secondary Contact</h4>
+              <h4 className="text-sm font-semibold text-gray-800">Secondary Contact (Optional)</h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
-                <Label htmlFor="contact2Name">Contact Person Name *</Label>
+                <Label htmlFor="contact2Name">Contact Person Name</Label>
                 <Input id="contact2Name" placeholder="Full name" className="rounded-xl" value={vbd.contact2Name} onChange={(e) => updateVendorBasicDetails({ contact2Name: e.target.value })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact2Designation">Designation *</Label>
+                <Label htmlFor="contact2Designation">Designation</Label>
                 <Input id="contact2Designation" placeholder="e.g., Manager, Co-founder" className="rounded-xl" value={vbd.contact2Designation} onChange={(e) => updateVendorBasicDetails({ contact2Designation: e.target.value })} />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
-                <Label htmlFor="contact2Phone">Phone Number *</Label>
+                <Label htmlFor="contact2Phone">Phone Number</Label>
                 <Input id="contact2Phone" type="tel" placeholder="+91 XXXXX XXXXX" maxLength={10} className="rounded-xl" value={vbd.contact2Phone} onChange={(e) => updateVendorBasicDetails({ contact2Phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="contact2Email">Email Address *</Label>
+                <Label htmlFor="contact2Email">Email Address</Label>
                 <Input id="contact2Email" type="email" placeholder="contact2@email.com" className="rounded-xl" value={vbd.contact2Email} onChange={(e) => updateVendorBasicDetails({ contact2Email: e.target.value })} />
               </div>
             </div>
@@ -616,12 +521,6 @@ export function VendorBasicDetails() {
 
       {/* Navigation */}
       <div className="flex justify-end gap-4 pt-4">
-        {apiError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{apiError}</AlertDescription>
-          </Alert>
-        )}
         <Button
           onClick={handleNext}
           disabled={submitting}

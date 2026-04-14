@@ -1,10 +1,10 @@
 import { useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { Info, RefreshCw, Phone, Mail, Loader2 } from "lucide-react";
+import { Info, RefreshCw, Phone, Mail, Loader2, AlertCircle } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
 
@@ -16,6 +16,7 @@ export function RefundsReturns() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchRefundPolicy = async () => {
@@ -57,6 +58,7 @@ export function RefundsReturns() {
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setSubmitting(false);
     }
@@ -74,10 +76,17 @@ export function RefundsReturns() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Refund Policy</h2>
         <p className="text-sm md:text-base text-gray-600">Provide contact details for customer refund requests</p>
       </div>
+
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
 
       {/* Info Banner */}
       <div className="flex items-start gap-3 p-4 md:p-5 bg-gradient-to-r from-amber-50 to-orange-50/30 border border-amber-200 rounded-2xl">
@@ -150,9 +159,6 @@ export function RefundsReturns() {
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
-        {apiError && (
-          <p className="text-sm text-red-500 text-right">{apiError}</p>
-        )}
         <Button
           onClick={handleBack}
           variant="outline"

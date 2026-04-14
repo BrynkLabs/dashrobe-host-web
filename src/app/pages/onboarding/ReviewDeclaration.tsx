@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Checkbox } from "../../components/ui/checkbox";
@@ -134,7 +134,7 @@ export function ReviewDeclaration() {
         const d = statusRes.value.data?.data;
         if (d?.status) {
           setSubmissionStatus(d.status);
-          if (d.status === "SUBMITTED") {
+          if (d.status === "SUBMITTED" || d.status === "REJECTED" || d.status === "SUSPENDED" || d.status === "APPROVED") {
             setIsSubmitted(true);
             setTermsAccepted(true);
           }
@@ -184,19 +184,18 @@ export function ReviewDeclaration() {
     bank.accountNumber &&
     bank.accountType &&
     bank.ifscCode &&
-    bank.gstCertificateUploaded &&
-    bank.businessPANUploaded &&
-    bank.ownerPANUploaded &&
-    bank.bankProofUploaded
+    bank.ownerPANUploaded
   );
 
   const canSubmit = termsAccepted && basicComplete && bankComplete;
 
   const [submitError, setSubmitError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async () => {
     if (!canSubmit) {
       setShowError(true);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       return;
     }
 
@@ -211,9 +210,11 @@ export function ReviewDeclaration() {
       );
       setIsSubmitted(true);
       setSubmissionStatus("SUBMITTED");
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setSubmitError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     } finally {
       setIsSubmitting(false);
     }
@@ -246,13 +247,50 @@ export function ReviewDeclaration() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Review & Declaration</h2>
         <p className="text-sm md:text-base text-gray-600">Review your details and accept the Terms and Conditions to submit</p>
       </div>
 
+      {/* Submit API error */}
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{submitError}</p>
+        </div>
+      )}
+
       {/* Submission status notice */}
-      {isSubmitted ? (
+      {isSubmitted && (submissionStatus === "REJECTED" || submissionStatus === "SUSPENDED") ? (
+        <div
+          className="rounded-2xl p-4 flex items-start gap-3"
+          style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA" }}
+        >
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-red-800">
+            <p>
+              Your request has been {submissionStatus === "REJECTED" ? "rejected" : "suspended"}. Please contact our customer support team for assistance.
+            </p>
+            <p className="mt-1 font-medium">
+              <a href="mailto:info@dashrobe.in" className="underline">info@dashrobe.in</a>
+              {" "}or{" "}
+              <a href="tel:+919999999999" className="underline">+91 9999 999 999</a>
+            </p>
+          </div>
+        </div>
+      ) : isSubmitted && submissionStatus === "APPROVED" ? (
+        <div
+          className="rounded-2xl p-4 flex items-start gap-3"
+          style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}
+        >
+          <CircleCheck className="w-5 h-5 text-[#16A34A] flex-shrink-0 mt-0.5" />
+          <div className="text-sm text-emerald-800">
+            <p className="text-[#16A34A]">
+              Congratulations! Your application has been approved. Welcome to Dashrobe!
+            </p>
+          </div>
+        </div>
+      ) : isSubmitted ? (
         <div
           className="rounded-2xl p-4 flex items-center gap-3"
           style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}
@@ -271,6 +309,18 @@ export function ReviewDeclaration() {
             </p>
           </div>
         )
+      )}
+
+      {/* Validation Error */}
+      {showError && !canSubmit && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">
+            {!basicComplete || !bankComplete
+              ? "Please complete Basic Details and Bank & Settlement sections before submitting."
+              : "Please accept the Terms and Conditions to submit your application."}
+          </p>
+        </div>
       )}
 
       {/* Summary Cards */}
@@ -491,18 +541,6 @@ export function ReviewDeclaration() {
         </div>
       </div>
 
-      {/* Validation Error */}
-      {showError && !canSubmit && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">
-            {!basicComplete || !bankComplete
-              ? "Please complete Basic Details and Bank & Settlement sections before submitting."
-              : "Please accept the Terms and Conditions to submit your application."}
-          </p>
-        </div>
-      )}
-
       {/* Terms and Conditions */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 lg:p-8 space-y-5">
         <div className="flex items-center gap-2">
@@ -567,14 +605,6 @@ export function ReviewDeclaration() {
           </>
         )}
       </div>
-
-      {/* Submit API error */}
-      {submitError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">{submitError}</p>
-        </div>
-      )}
 
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
@@ -673,7 +703,7 @@ function SummaryRow({
   return (
     <div className="flex items-start gap-2 text-sm">
       {icon && <span className="text-gray-400 mt-0.5 shrink-0">{icon}</span>}
-      <span className="text-gray-500 shrink-0 min-w-[90px]">{label}</span>
+      <span className={`text-gray-500 shrink-0 ${icon ? "w-[110px]" : "w-[130px]"}`}>{label}</span>
       <span className={`font-medium flex items-center gap-1.5 break-all ${isEmpty ? "text-gray-400 italic" : "text-gray-900"}`}>
         {value}
         {verified && (
