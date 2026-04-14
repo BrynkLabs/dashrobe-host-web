@@ -171,11 +171,7 @@ export function ReviewDeclaration() {
     vbd.contactPerson &&
     vbd.designation &&
     vbd.phone &&
-    vbd.email &&
-    vbd.contact2Name &&
-    vbd.contact2Designation &&
-    vbd.contact2Phone &&
-    vbd.contact2Email
+    vbd.email
   );
 
   const bankComplete = !!(
