@@ -1,9 +1,20 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Check, Menu, X, HelpCircle, Lock } from "lucide-react";
+import { Check, Menu, X, HelpCircle, Lock, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { OnboardingProvider } from "../onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
-import { getCookie } from "@/app/utils/cookieUtils";
+import { getCookie, removeCookie } from "@/app/utils/cookieUtils";
+import { logoutUser } from "@/app/Service/AuthService/authService";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "../ui/alert-dialog";
 
 const steps = [
   { id: 1, title: "Vendor Basic Details", path: "/onboarding" },
@@ -22,6 +33,27 @@ export function OnboardingLayout() {
   const [stepCompletion, setStepCompletion] = useState<Record<string, boolean>>({});
 
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      const token = getCookie("token");
+      if (token) await logoutUser(token);
+    } catch {
+      // proceed with local cleanup
+    } finally {
+      removeCookie("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("phoneNumber");
+      localStorage.removeItem("userType");
+      localStorage.removeItem("role");
+      localStorage.removeItem("newUser");
+      setLoggingOut(false);
+      navigate("/vendor-login", { replace: true });
+    }
+  };
 
   const currentStepIndex = steps.findIndex(step => step.path === location.pathname);
   const currentStep = currentStepIndex + 1;
@@ -205,12 +237,21 @@ export function OnboardingLayout() {
 
         {/* Footer */}
         <div className="p-4 md:p-5 border-t border-white/8">
-          <div className="flex items-center gap-2 text-white/50 hover:text-white/70 transition-colors cursor-pointer">
-            <HelpCircle className="w-3.5 h-3.5" />
-            <div>
-              <p className="text-xs font-medium">Need help?</p>
-              <p className="text-[11px] text-white/40">support@dashrobe.com</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white/50 hover:text-white/70 transition-colors cursor-pointer">
+              <HelpCircle className="w-3.5 h-3.5" />
+              <div>
+                <p className="text-xs font-medium">Need help?</p>
+                <p className="text-[11px] text-white/40">support@dashrobe.com</p>
+              </div>
             </div>
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-5 h-5 text-[#FFC100B2]" />
+            </button>
           </div>
         </div>
       </div>
@@ -222,6 +263,30 @@ export function OnboardingLayout() {
         </div>
       </div>
     </div>
+
+      <AlertDialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogHeader className="flex flex-row items-center gap-4">
+              <LogOut className="w-10 h-10 text-destructive bg-[#FEF2F2] p-2 rounded-full" />
+              <AlertDialogTitle>Do you want to Logout?</AlertDialogTitle>
+            </AlertDialogHeader>
+            <AlertDialogDescription className="text-sm text-[#1A1A2E]">
+              Are you sure you want to logout ?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="flex-1 h-[43px]" disabled={loggingOut}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLogout}
+              disabled={loggingOut}
+              className="bg-[#E7000B]/60 text-white hover:bg-[#E7000B]/80 flex-1 h-[43px]"
+            >
+              {loggingOut ? "Logging out..." : "Logout"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </OnboardingProvider>
   );
 }

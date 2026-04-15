@@ -11,9 +11,9 @@ export default function ProtectedRoute({ children }: any) {
   const role = localStorage.getItem("role");
 
   // Admin area is restricted to SUPERADMIN. Vendors logged in here are
-  // redirected back to their own onboarding flow.
+  // redirected to the admin login page.
   if (role && role !== "SUPERADMIN") {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;

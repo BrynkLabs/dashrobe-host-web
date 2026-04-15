@@ -124,6 +124,29 @@ export const reactivateVendorStore = async (id: string) => {
   }
 };
 
+export const downloadDocument = async (s3Key: string): Promise<string> => {
+  try {
+    const token = getCookie("token");
+    const response = await axiosClient.get(
+      `/api/v1/superadmin/onboarding/documents/download`,
+      {
+        params: { s3_key: s3Key },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    if (response.status === 200 && response.data?.success) {
+      return response.data.data;
+    } else {
+      throw new Error("Failed to get document URL");
+    }
+  } catch (error) {
+    console.error("Error downloading document:", error);
+    throw error;
+  }
+};
+
 export const suspendVendorStore = async (id: string) => {
   try {
     const token = getCookie("token");

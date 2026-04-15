@@ -11,9 +11,9 @@ export default function VendorProtectedRoute({ children }: any) {
   const role = localStorage.getItem("role");
 
   // Vendor area is restricted to VENDOR role. Superadmins logged in here
-  // are redirected to the admin dashboard.
+  // are redirected to the vendor login page.
   if (role && role !== "VENDOR") {
-    return <Navigate to="/admin" replace />;
+    return <Navigate to="/vendor-login" replace />;
   }
 
   return children;

@@ -6,8 +6,23 @@ import { Label } from "../../components/ui/label";
 import { CategoryCard } from "../../components/onboarding/CategoryCard";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { AddressFields } from "../../components/onboarding/AddressFields";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "../../components/ui/input-otp";
-import { Building2, Users, FileText, Phone, ShieldCheck, Loader2, MessageCircle, Briefcase, MoreHorizontal, AlertCircle } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "../../components/ui/input-otp";
+import {
+  Building2,
+  Users,
+  FileText,
+  Phone,
+  ShieldCheck,
+  Loader2,
+  MessageCircle,
+  Briefcase,
+  MoreHorizontal,
+  AlertCircle,
+} from "lucide-react";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { generateOtp, verifyOtp } from "@/app/Service/AuthService/authService";
@@ -87,7 +102,10 @@ export function VendorBasicDetails() {
   useEffect(() => {
     const storedPhone = localStorage.getItem("phoneNumber");
     if (storedPhone) {
-      updateVendorBasicDetails({ phone: normalizePhone(storedPhone), phoneVerified: true });
+      updateVendorBasicDetails({
+        phone: normalizePhone(storedPhone),
+        phoneVerified: true,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -105,12 +123,16 @@ export function VendorBasicDetails() {
   // Countdown timer for alt phone
   useEffect(() => {
     if (altPhoneResendTimer > 0) {
-      const t = setTimeout(() => setAltPhoneResendTimer(altPhoneResendTimer - 1), 1000);
+      const t = setTimeout(
+        () => setAltPhoneResendTimer(altPhoneResendTimer - 1),
+        1000
+      );
       return () => clearTimeout(t);
     }
   }, [altPhoneResendTimer]);
 
-  const isValidPhone = (val: string) => /^(\+91\s?)?[6-9]\d{9}$/.test(val.replace(/\s/g, ""));
+  const isValidPhone = (val: string) =>
+    /^(\+91\s?)?[6-9]\d{9}$/.test(val.replace(/\s/g, ""));
 
   const handleSendOtp = useCallback(async () => {
     if (!isValidPhone(vbd.altPhone)) {
@@ -151,7 +173,12 @@ export function VendorBasicDetails() {
     } finally {
       setAltPhoneVerifying(false);
     }
-  }, [altPhoneOtpValue, vbd.altPhone, altPhoneTokenRefId, updateVendorBasicDetails]);
+  }, [
+    altPhoneOtpValue,
+    vbd.altPhone,
+    altPhoneTokenRefId,
+    updateVendorBasicDetails,
+  ]);
 
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -167,7 +194,8 @@ export function VendorBasicDetails() {
         storeName: vbd.storeName,
         businessName: vbd.businessName,
         ownerName: vbd.ownerName,
-        legalEntityType: LEGAL_ENTITY_MAP[vbd.legalEntity] ?? vbd.legalEntity.toUpperCase(),
+        legalEntityType:
+          LEGAL_ENTITY_MAP[vbd.legalEntity] ?? vbd.legalEntity.toUpperCase(),
         gstin: vbd.gstin,
         pan: vbd.pan,
         registeredAddress: addr.shopNo,
@@ -201,25 +229,53 @@ export function VendorBasicDetails() {
       );
 
       if (res.status !== 200) {
-        throw new Error(res.data?.message ?? "Something went wrong. Please try again.");
+        throw new Error(
+          res.data?.message ?? "Something went wrong. Please try again."
+        );
       }
 
       navigate("/onboarding/operations");
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Something went wrong. Please try again.";
       setApiError(msg);
-      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      setTimeout(
+        () => topRef.current?.scrollIntoView({ behavior: "smooth" }),
+        100
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const legalEntities = [
-    { id: "sole", label: "Sole Proprietorship", icon: <Building2 className="w-6 h-6 text-[#220E92]" /> },
-    { id: "partnership", label: "Partnership", icon: <Users className="w-6 h-6 text-[#220E92]" /> },
-    { id: "private", label: "Private Limited", icon: <FileText className="w-6 h-6 text-[#220E92]" /> },
-    { id: "llp", label: "LLP", icon: <Briefcase className="w-6 h-6 text-[#220E92]" /> },
-    { id: "others", label: "Others", icon: <MoreHorizontal className="w-6 h-6 text-[#220E92]" /> },
+    {
+      id: "sole",
+      label: "Sole Proprietorship",
+      icon: <Building2 className="w-6 h-6 text-[#220E92]" />,
+    },
+    {
+      id: "partnership",
+      label: "Partnership",
+      icon: <Users className="w-6 h-6 text-[#220E92]" />,
+    },
+    {
+      id: "private",
+      label: "Private Limited",
+      icon: <FileText className="w-6 h-6 text-[#220E92]" />,
+    },
+    {
+      id: "llp",
+      label: "LLP",
+      icon: <Briefcase className="w-6 h-6 text-[#220E92]" />,
+    },
+    {
+      id: "others",
+      label: "Others",
+      icon: <MoreHorizontal className="w-6 h-6 text-[#220E92]" />,
+    },
   ];
 
   if (loading) {
@@ -233,8 +289,12 @@ export function VendorBasicDetails() {
   return (
     <div className="space-y-6 md:space-y-8">
       <div ref={topRef}>
-        <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Vendor Basic Details</h2>
-        <p className="text-sm md:text-base text-gray-600">Let's start with your business information</p>
+        <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">
+          Vendor Basic Details
+        </h2>
+        <p className="text-sm md:text-base text-gray-600">
+          Let's start with your business information
+        </p>
       </div>
 
       {apiError && (
@@ -249,11 +309,27 @@ export function VendorBasicDetails() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <div className="space-y-2">
             <Label htmlFor="storeName">Store Name *</Label>
-            <Input id="storeName" placeholder="Enter your store name" className="rounded-xl" value={vbd.storeName} onChange={(e) => updateVendorBasicDetails({ storeName: e.target.value })} />
+            <Input
+              id="storeName"
+              placeholder="Enter your store name"
+              className="rounded-xl"
+              value={vbd.storeName}
+              onChange={(e) =>
+                updateVendorBasicDetails({ storeName: e.target.value })
+              }
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="businessName">Business Name *</Label>
-            <Input id="businessName" placeholder="Enter your business name" className="rounded-xl" value={vbd.businessName} onChange={(e) => updateVendorBasicDetails({ businessName: e.target.value })} />
+            <Input
+              id="businessName"
+              placeholder="Enter your business name"
+              className="rounded-xl"
+              value={vbd.businessName}
+              onChange={(e) =>
+                updateVendorBasicDetails({ businessName: e.target.value })
+              }
+            />
           </div>
         </div>
 
@@ -261,7 +337,15 @@ export function VendorBasicDetails() {
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ownerName">Owner / Authorized Person *</Label>
-            <Input id="ownerName" placeholder="Full name" className="rounded-xl" value={vbd.ownerName} onChange={(e) => updateVendorBasicDetails({ ownerName: e.target.value })} />
+            <Input
+              id="ownerName"
+              placeholder="Full name"
+              className="rounded-xl"
+              value={vbd.ownerName}
+              onChange={(e) =>
+                updateVendorBasicDetails({ ownerName: e.target.value })
+              }
+            />
           </div>
 
           <div className="space-y-3">
@@ -273,7 +357,9 @@ export function VendorBasicDetails() {
                   title={entity.label}
                   icon={entity.icon}
                   selected={vbd.legalEntity === entity.id}
-                  onClick={() => updateVendorBasicDetails({ legalEntity: entity.id })}
+                  onClick={() =>
+                    updateVendorBasicDetails({ legalEntity: entity.id })
+                  }
                 />
               ))}
             </div>
@@ -283,22 +369,32 @@ export function VendorBasicDetails() {
         {/* GST & PAN */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <div className="space-y-2">
-            <Label htmlFor="gstin">GSTIN *</Label>
+            <Label htmlFor="gstin">GSTIN</Label>
             <div className="space-y-2">
               <Input
                 id="gstin"
                 placeholder="Enter GSTIN"
+                maxLength={15}
                 className="rounded-xl"
                 value={vbd.gstin}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  updateVendorBasicDetails({ gstin: val, gstVerified: false });
-                  if (val.length === 15) {
-                    setTimeout(() => updateVendorBasicDetails({ gstVerified: true }), 500);
-                  }
+                  const val = e.target.value.toUpperCase();
+                  const gstRegex =
+                    /^[0-9]{2}[A-Z]{3}[PCHFATBLJ][A-Z][0-9]{4}[A-Z][0-9A-Z][Z][0-9A-Z]$/;
+                  const isValid = gstRegex.test(val);
+                  updateVendorBasicDetails({
+                    gstin: val,
+                    gstVerified: isValid,
+                  });
                 }}
               />
-              <VerificationBadge verified={vbd.gstVerified} label="GST Verified" />
+              {vbd.gstin && !vbd.gstVerified && (
+                <p className="text-xs text-red-500">Invalid GSTIN format</p>
+              )}
+              <VerificationBadge
+                verified={vbd.gstVerified}
+                label="GST Verified"
+              />
             </div>
           </div>
           <div className="space-y-2">
@@ -311,24 +407,33 @@ export function VendorBasicDetails() {
                 className="rounded-xl"
                 value={vbd.pan}
                 onChange={(e) => {
-                  const val = e.target.value;
-                  updateVendorBasicDetails({ pan: val, panVerified: false });
-                  if (val.length === 10) {
-                    setTimeout(() => updateVendorBasicDetails({ panVerified: true }), 500);
-                  }
+                  const val = e.target.value.toUpperCase();
+                  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+                  const isValid = panRegex.test(val);
+                  updateVendorBasicDetails({ pan: val, panVerified: isValid });
                 }}
               />
-              <VerificationBadge verified={vbd.panVerified} label="PAN Verified" />
+              {vbd.pan && !vbd.panVerified && (
+                <p className="text-xs text-red-500">Invalid PAN format</p>
+              )}
+              <VerificationBadge
+                verified={vbd.panVerified}
+                label="PAN Verified"
+              />
             </div>
           </div>
         </div>
 
         {/* Registered Address */}
         <div className="space-y-3">
-          <Label className="text-sm font-semibold text-gray-800">Registered Address *</Label>
+          <Label className="text-sm font-semibold text-gray-800">
+            Registered Address *
+          </Label>
           <AddressFields
             address={vbd.address}
-            onChange={(newAddr) => updateVendorBasicDetails({ address: newAddr })}
+            onChange={(newAddr) =>
+              updateVendorBasicDetails({ address: newAddr })
+            }
             idPrefix="reg"
           />
         </div>
@@ -341,50 +446,74 @@ export function VendorBasicDetails() {
             <Users className="w-5 h-5 text-[#220E92]" />
           </div>
           <div>
-            <h3 className="text-base md:text-lg font-semibold text-gray-900">Contact Information</h3>
-            <p className="text-sm text-gray-500">Please provide details for two contact persons</p>
+            <h3 className="text-base md:text-lg font-semibold text-gray-900">
+              Contact Information
+            </h3>
+            <p className="text-sm text-gray-500">
+              Please provide details for two contact persons
+            </p>
           </div>
         </div>
 
         {/* Contact Person 1 */}
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-[#220E92] flex items-center justify-center text-white text-xs font-medium">1</div>
-            <h4 className="text-sm font-semibold text-gray-800">Primary Contact</h4>
+            <div className="w-7 h-7 rounded-lg bg-[#220E92] flex items-center justify-center text-white text-xs font-medium">
+              1
+            </div>
+            <h4 className="text-sm font-semibold text-gray-800">
+              Primary Contact
+            </h4>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-2">
               <Label htmlFor="contactPerson">Contact Person Name *</Label>
-              <Input id="contactPerson" placeholder="Full name" className="rounded-xl" value={vbd.contactPerson} onChange={(e) => updateVendorBasicDetails({ contactPerson: e.target.value })} />
+              <Input
+                id="contactPerson"
+                placeholder="Full name"
+                className="rounded-xl"
+                value={vbd.contactPerson}
+                onChange={(e) =>
+                  updateVendorBasicDetails({ contactPerson: e.target.value })
+                }
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="designation">Designation *</Label>
-              <Input id="designation" placeholder="e.g., Manager, Owner" className="rounded-xl" value={vbd.designation} onChange={(e) => updateVendorBasicDetails({ designation: e.target.value })} />
+              <Input
+                id="designation"
+                placeholder="e.g., Manager, Owner"
+                className="rounded-xl"
+                value={vbd.designation}
+                onChange={(e) =>
+                  updateVendorBasicDetails({ designation: e.target.value })
+                }
+              />
             </div>
           </div>
 
-        {/* Primary Phone (prefilled from logged-in user, always disabled) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          <div className="space-y-3">
-            <Label htmlFor="phone">Phone Number *</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+91 XXXXX XXXXX"
-              className="rounded-xl bg-gray-50"
-              maxLength={10}
-              value={vbd.phone}
-              disabled
-            />
-            <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
+          {/* Primary Phone (prefilled from logged-in user, always disabled) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <div className="space-y-3">
+              <Label htmlFor="phone">Phone Number *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder="+91 XXXXX XXXXX"
+                className="rounded-xl bg-gray-50"
+                maxLength={10}
+                value={vbd.phone}
+                disabled
+              />
+              {/* <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
               <MessageCircle className="w-3.5 h-3.5 text-green-600 shrink-0" />
               <p className="text-xs text-green-800">WhatsApp is mandatory on this number. All order updates and communication will be sent via WhatsApp.</p>
+            </div> */}
             </div>
-          </div>
 
-          {/* Alternate Phone with OTP Verification */}
-          <div className="space-y-3">
+            {/* Alternate Phone with OTP Verification */}
+            {/* <div className="space-y-3">
             <Label htmlFor="altPhone">Alternate Phone (Optional)</Label>
             <div className="flex gap-2">
               <Input
@@ -475,13 +604,21 @@ export function VendorBasicDetails() {
               <p className="text-xs text-red-500">{altPhoneError}</p>
             )}
             <VerificationBadge verified={vbd.altPhoneVerified} label="Phone Verified" />
+          </div> */}
+            <div className="space-y-3">
+              <Label htmlFor="email">Email Address *</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="your@email.com"
+                className="rounded-xl"
+                value={vbd.email}
+                onChange={(e) =>
+                  updateVendorBasicDetails({ email: e.target.value })
+                }
+              />
+            </div>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="email">Email Address *</Label>
-          <Input id="email" type="email" placeholder="your@email.com" className="rounded-xl" value={vbd.email} onChange={(e) => updateVendorBasicDetails({ email: e.target.value })} />
-        </div>
         </div>
 
         {/* Divider */}
@@ -489,34 +626,78 @@ export function VendorBasicDetails() {
           {/* Contact Person 2 */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-[#220E92] flex items-center justify-center text-white text-xs font-medium">2</div>
-              <h4 className="text-sm font-semibold text-gray-800">Secondary Contact (Optional)</h4>
+              <div className="w-7 h-7 rounded-lg bg-[#220E92] flex items-center justify-center text-white text-xs font-medium">
+                2
+              </div>
+              <h4 className="text-sm font-semibold text-gray-800">
+                Secondary Contact (Optional)
+              </h4>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
                 <Label htmlFor="contact2Name">Contact Person Name</Label>
-                <Input id="contact2Name" placeholder="Full name" className="rounded-xl" value={vbd.contact2Name} onChange={(e) => updateVendorBasicDetails({ contact2Name: e.target.value })} />
+                <Input
+                  id="contact2Name"
+                  placeholder="Full name"
+                  className="rounded-xl"
+                  value={vbd.contact2Name}
+                  onChange={(e) =>
+                    updateVendorBasicDetails({ contact2Name: e.target.value })
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact2Designation">Designation</Label>
-                <Input id="contact2Designation" placeholder="e.g., Manager, Co-founder" className="rounded-xl" value={vbd.contact2Designation} onChange={(e) => updateVendorBasicDetails({ contact2Designation: e.target.value })} />
+                <Input
+                  id="contact2Designation"
+                  placeholder="e.g., Manager, Co-founder"
+                  className="rounded-xl"
+                  value={vbd.contact2Designation}
+                  onChange={(e) =>
+                    updateVendorBasicDetails({
+                      contact2Designation: e.target.value,
+                    })
+                  }
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               <div className="space-y-2">
                 <Label htmlFor="contact2Phone">Phone Number</Label>
-                <Input id="contact2Phone" type="tel" placeholder="+91 XXXXX XXXXX" maxLength={10} className="rounded-xl" value={vbd.contact2Phone} onChange={(e) => updateVendorBasicDetails({ contact2Phone: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
+                <Input
+                  id="contact2Phone"
+                  type="tel"
+                  placeholder="+91 XXXXX XXXXX"
+                  maxLength={10}
+                  className="rounded-xl"
+                  value={vbd.contact2Phone}
+                  onChange={(e) =>
+                    updateVendorBasicDetails({
+                      contact2Phone: e.target.value
+                        .replace(/\D/g, "")
+                        .slice(0, 10),
+                    })
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact2Email">Email Address</Label>
-                <Input id="contact2Email" type="email" placeholder="contact2@email.com" className="rounded-xl" value={vbd.contact2Email} onChange={(e) => updateVendorBasicDetails({ contact2Email: e.target.value })} />
+                <Input
+                  id="contact2Email"
+                  type="email"
+                  placeholder="contact2@email.com"
+                  className="rounded-xl"
+                  value={vbd.contact2Email}
+                  onChange={(e) =>
+                    updateVendorBasicDetails({ contact2Email: e.target.value })
+                  }
+                />
               </div>
             </div>
           </div>
         </div>
-
       </div>
 
       {/* Navigation */}
@@ -524,7 +705,7 @@ export function VendorBasicDetails() {
         <Button
           onClick={handleNext}
           disabled={submitting}
-          style={{ backgroundColor: '#220E92', borderRadius: '12px' }}
+          style={{ backgroundColor: "#220E92", borderRadius: "12px" }}
           className="w-full md:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
           {submitting ? (

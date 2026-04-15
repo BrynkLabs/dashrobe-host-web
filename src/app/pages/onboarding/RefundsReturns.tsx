@@ -129,7 +129,7 @@ export function RefundsReturns() {
             />
             <p className="text-xs text-gray-500">This number will be shared with customers for refund queries</p>
           </div>
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="refundEmail" className="flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-[#220E92]" />
               Contact Email *
@@ -143,10 +143,10 @@ export function RefundsReturns() {
               onChange={(e) => updateRefundsReturns({ refundEmail: e.target.value })}
             />
             <p className="text-xs text-gray-500">Refund requests and confirmations will be sent to this email</p>
-          </div>
+          </div> */}
         </div>
 
-        <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+        {/* <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
           <p className="text-sm font-medium text-gray-700">How it works</p>
           <ul className="text-sm text-gray-600 space-y-1.5 list-disc list-inside">
             <li>Customer raises a refund request through the Dashrobe app</li>
@@ -154,7 +154,7 @@ export function RefundsReturns() {
             <li>Review the request and process the refund directly</li>
             <li>Update the refund status on your Dashrobe vendor dashboard</li>
           </ul>
-        </div>
+        </div> */}
       </div>
 
       {/* Navigation */}
