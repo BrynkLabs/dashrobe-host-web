@@ -51,6 +51,7 @@ import {
 import { Pagination } from "../../components/Pagination";
 import {
   approveStore,
+  downloadDocument,
   getAll,
   getVendorDetail,
   reactivateVendorStore,
@@ -1041,6 +1042,22 @@ export function AdminStores() {
     link.click();
   };
 
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
+
+  const handleViewDocument = async (s3Key: string, name: string) => {
+    try {
+      setDocPreviewLoading(true);
+      const url = await downloadDocument(s3Key);
+      const ext = s3Key.split(".").pop()?.toLowerCase() || "";
+      const fileType = ["png", "jpg", "jpeg", "gif", "webp"].includes(ext) ? "image" : ext === "pdf" ? "pdf" : "image";
+      setPreviewDoc({ name, url, fileType });
+    } catch (error) {
+      console.error("Error previewing document:", error);
+    } finally {
+      setDocPreviewLoading(false);
+    }
+  };
+
   const fetchStores = async () => {
     try {
       const response = await getAll({
@@ -1484,10 +1501,10 @@ export function AdminStores() {
                     </div>
                     <div className="space-y-2">
                       {[
-                        { name: "GST Certificate", uploaded: !!vd.bankSettlement.docGstCertificateS3Key },
-                        { name: "Business PAN", uploaded: !!vd.bankSettlement.docBusinessPanS3Key },
-                        { name: "Owner PAN", uploaded: !!vd.bankSettlement.docOwnerPanS3Key },
-                        { name: "Bank Proof", uploaded: !!vd.bankSettlement.docBankProofS3Key },
+                        { name: "GST Certificate", uploaded: !!vd.bankSettlement.docGstCertificateS3Key, s3Key: vd.bankSettlement.docGstCertificateS3Key },
+                        { name: "Business PAN", uploaded: !!vd.bankSettlement.docBusinessPanS3Key, s3Key: vd.bankSettlement.docBusinessPanS3Key },
+                        { name: "Owner PAN", uploaded: !!vd.bankSettlement.docOwnerPanS3Key, s3Key: vd.bankSettlement.docOwnerPanS3Key },
+                        { name: "Bank Proof", uploaded: !!vd.bankSettlement.docBankProofS3Key, s3Key: vd.bankSettlement.docBankProofS3Key },
                       ].map((doc) => (
                         <div key={doc.name} className="flex items-center justify-between py-2.5 px-3.5 rounded-[10px] bg-muted/40 border border-border/60">
                           <div className="flex items-center gap-3 min-w-0">
@@ -1498,7 +1515,19 @@ export function AdminStores() {
                               <p className="truncate" style={{ fontSize: "13px", fontWeight: 500 }}>{doc.name}</p>
                             </div>
                           </div>
-                          <VBadge ok={doc.uploaded} yes="Uploaded" no="Missing" />
+                          <div className="flex items-center gap-2">
+                            <VBadge ok={doc.uploaded} yes="Uploaded" no="Missing" />
+                            {doc.uploaded && doc.s3Key && (
+                              <button
+                                onClick={() => handleViewDocument(doc.s3Key!, doc.name)}
+                                disabled={docPreviewLoading}
+                                className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[#220E92]/10 transition-colors"
+                                title={`View ${doc.name}`}
+                              >
+                                <Eye className="w-4 h-4 text-[#220E92]" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1661,6 +1690,52 @@ export function AdminStores() {
                 </button>
               </div>
               {rejectError && <p className="text-xs text-red-500 mt-2">{rejectError}</p>}
+            </div>
+          </div>
+        )}
+
+        {/* Document Preview Modal */}
+        {previewDoc && (
+          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
+            <div className="bg-card rounded-[12px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-[10px] bg-[#220E92]/8 flex items-center justify-center shrink-0">
+                    <FileCheck className="w-5 h-5 text-[#220E92]" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate" style={{ fontSize: "16px", fontWeight: 600 }}>{previewDoc.name}</h3>
+                    <p className="text-muted-foreground" style={{ fontSize: "12px" }}>{previewDoc.fileType} Document</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setPreviewDoc(null)}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                  >
+                    <X className="w-4.5 h-4.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-6 bg-muted/20">
+                {previewDoc.fileType === "pdf" ? (
+                  <iframe
+                    src={previewDoc.url}
+                    className="w-full rounded-[12px] border border-border"
+                    style={{ minHeight: "500px" }}
+                    title={previewDoc.name}
+                  />
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <img
+                      src={previewDoc.url}
+                      alt={previewDoc.name}
+                      className="max-w-full max-h-[70vh] rounded-[12px] border border-border shadow-sm object-contain"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -2196,150 +2271,6 @@ export function AdminStores() {
       )}
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/* DOCUMENT PREVIEW MODAL                                 */}
-      {/* ═══════════════════════════════════════════════════════ */}
-      {/* {previewDoc && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
-          <div className="bg-card rounded-[12px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-[10px] bg-[#220E92]/8 flex items-center justify-center shrink-0">
-                  <FileCheck className="w-5 h-5 text-[#220E92]" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="truncate" style={{ fontSize: "16px", fontWeight: 600 }}>{previewDoc.name}</h3>
-                  <p className="text-muted-foreground" style={{ fontSize: "12px" }}>{previewDoc.fileType} Document</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => handleDownload(previewDoc)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-[10px] bg-[#220E92] text-white hover:bg-[#220E92]/90 transition-colors"
-                  style={{ fontSize: "13px", fontWeight: 600 }}
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                </button>
-                <button
-                  onClick={() => setPreviewDoc(null)}
-                  className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
-                >
-                  <X className="w-4.5 h-4.5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-auto p-6 bg-muted/20">
-              <div className="bg-white rounded-[12px] border border-border shadow-sm p-8 min-h-[400px] flex flex-col items-center">
-                <div className="w-full max-w-md text-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-[#220E92]/8 flex items-center justify-center mx-auto">
-                    <Shield className="w-8 h-8 text-[#220E92]" />
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground" style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px" }}>Government of India</p>
-                    <h4 className="mt-1" style={{ fontSize: "20px", fontWeight: 700 }}>{previewDoc.name}</h4>
-                  </div>
-
-                  <div className="border-t border-b border-border py-4 space-y-3 text-left">
-                    {previewDoc.name.includes("GST") && selectedStore?.onboardingData && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>GSTIN</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.gstin}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Legal Name</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.businessName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Trade Name</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.storeName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Address</span>
-                          <span className="text-right max-w-[250px]" style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.businessAddress}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Status</span>
-                          <VBadge ok={selectedStore.onboardingData.gstVerified} yes="Active" no="Inactive" />
-                        </div>
-                      </>
-                    )}
-                    {previewDoc.name.includes("PAN") && selectedStore?.onboardingData && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>PAN Number</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.pan}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Name</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>
-                            {previewDoc.name.includes("Business") ? selectedStore.onboardingData.businessName : selectedStore.onboardingData.ownerName}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Entity Type</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.legalEntityType}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Status</span>
-                          <VBadge ok={selectedStore.onboardingData.panVerified} yes="Verified" no="Unverified" />
-                        </div>
-                      </>
-                    )}
-                    {previewDoc.name.includes("Bank") && selectedStore?.onboardingData && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Account Holder</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.accountHolder}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Bank Name</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.bankName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Account Number</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.accountNumber}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>IFSC Code</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.ifscCode}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Verified</span>
-                          <VBadge ok={selectedStore.onboardingData.bankVerified} yes="Verified" no="Unverified" />
-                        </div>
-                      </>
-                    )}
-                    {!previewDoc.name.includes("GST") && !previewDoc.name.includes("PAN") && !previewDoc.name.includes("Bank") && selectedStore?.onboardingData && (
-                      <>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Document</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{previewDoc.name}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Issued To</span>
-                          <span style={{ fontSize: "13px", fontWeight: 600 }}>{selectedStore.onboardingData.businessName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground" style={{ fontSize: "13px" }}>Status</span>
-                          <VBadge ok={true} yes="Valid" />
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="pt-2">
-                    <p className="text-muted-foreground" style={{ fontSize: "11px" }}>
-                      This is a preview of the uploaded document. Click "Download" to get the original file.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 }

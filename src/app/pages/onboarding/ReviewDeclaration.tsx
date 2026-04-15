@@ -12,9 +12,10 @@ import {
 } from "../../components/ui/dialog";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { formatAddress } from "../../components/onboarding/AddressFields";
-import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info, Loader2 } from "lucide-react";
+import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
-import { getCookie } from "@/app/utils/cookieUtils";
+import { getCookie, removeCookie } from "@/app/utils/cookieUtils";
+import { logoutUser } from "@/app/Service/AuthService/authService";
 import containerIcon from "@/assets/icons/Container.png";
 
 const LEGAL_ENTITY_MAP: Record<string, string> = {
@@ -63,6 +64,57 @@ export function ReviewDeclaration() {
   const [basicExpanded, setBasicExpanded] = useState(true);
   const [bankingExpanded, setBankingExpanded] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showApproved, setShowApproved] = useState(false);
+
+  const isLocked = submissionStatus === "APPROVED" || submissionStatus === "SUSPENDED";
+
+  const handleLogout = async () => {
+    try {
+      const token = getCookie("token");
+      if (token) await logoutUser(token);
+    } catch {
+      // proceed with local cleanup
+    } finally {
+      removeCookie("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("phoneNumber");
+      localStorage.removeItem("userType");
+      localStorage.removeItem("role");
+      localStorage.removeItem("newUser");
+      window.location.reload();
+    }
+  };
+
+  const fetchStatus = async () => {
+    const token = getCookie("token");
+    const auth = { headers: { Authorization: `Bearer ${token}` } };
+    try {
+      const statusRes = await axiosClient.get(`/api/v1/onboarding/status`, auth);
+      const d = statusRes.data?.data;
+      if (d?.status) {
+        setSubmissionStatus(d.status);
+        if (d.status === "SUBMITTED" || d.status === "REJECTED" || d.status === "SUSPENDED" || d.status === "APPROVED") {
+          setIsSubmitted(true);
+          setTermsAccepted(true);
+        }
+        if (d.status === "APPROVED") {
+          setShowApproved(true);
+        }
+        if (d.status === "SUSPENDED") {
+          handleLogout();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch onboarding status:", error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchStatus();
+    setRefreshing(false);
+  };
 
   // Fetch basic details and bank settlement on mount
   useEffect(() => {
@@ -70,10 +122,9 @@ export function ReviewDeclaration() {
       const token = getCookie("token");
       const auth = { headers: { Authorization: `Bearer ${token}` } };
 
-      const [basicRes, bankRes, statusRes] = await Promise.allSettled([
+      const [basicRes, bankRes] = await Promise.allSettled([
         axiosClient.get(`/api/v1/onboarding/basic-details`, auth),
         axiosClient.get(`/api/v1/onboarding/bank-settlement`, auth),
-        axiosClient.get(`/api/v1/onboarding/status`, auth),
       ]);
 
       if (basicRes.status === "fulfilled") {
@@ -130,19 +181,7 @@ export function ReviewDeclaration() {
         console.error("Failed to fetch bank settlement:", bankRes.reason);
       }
 
-      if (statusRes.status === "fulfilled") {
-        const d = statusRes.value.data?.data;
-        if (d?.status) {
-          setSubmissionStatus(d.status);
-          if (d.status === "SUBMITTED" || d.status === "REJECTED" || d.status === "SUSPENDED" || d.status === "APPROVED") {
-            setIsSubmitted(true);
-            setTermsAccepted(true);
-          }
-        }
-      } else {
-        console.error("Failed to fetch onboarding status:", statusRes.reason);
-      }
-
+      await fetchStatus();
       setLoading(false);
     };
     fetchAll();
@@ -160,7 +199,6 @@ export function ReviewDeclaration() {
     vbd.businessName &&
     vbd.ownerName &&
     vbd.legalEntity &&
-    vbd.gstin &&
     vbd.pan &&
     vbd.address.shopNo &&
     vbd.address.streetArea &&
@@ -241,6 +279,71 @@ export function ReviewDeclaration() {
     );
   }
 
+  if (showApproved) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1a0a6e 0%, #220E92 30%, #3318c7 60%, #1a0a6e 100%)" }}
+      >
+        {/* Confetti particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {Array.from({ length: 50 }).map((_, i) => {
+            const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"];
+            const color = colors[i % colors.length];
+            const left = `${Math.random() * 100}%`;
+            const delay = `${Math.random() * 3}s`;
+            const duration = `${3 + Math.random() * 4}s`;
+            const size = Math.random() > 0.5 ? "w-2 h-2" : "w-1.5 h-4";
+            const rotation = `${Math.random() * 360}deg`;
+            return (
+              <div
+                key={i}
+                className={`absolute ${size} rounded-sm opacity-80`}
+                style={{
+                  backgroundColor: color,
+                  left,
+                  top: "-20px",
+                  transform: `rotate(${rotation})`,
+                  animation: `confettiFall ${duration} ${delay} linear infinite`,
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <style>{`
+          @keyframes confettiFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+          }
+        `}</style>
+
+        <div className="relative z-10 flex flex-col items-center text-center px-6">
+          {/* Yellow check circle */}
+          <div className="w-24 h-24 rounded-full bg-[#FFD700] flex items-center justify-center mb-8"
+            style={{ boxShadow: "0 0 40px rgba(255, 215, 0, 0.4)" }}
+          >
+            <CheckCircle2 className="w-12 h-12 text-[#1a0a6e]" />
+          </div>
+
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+            Welcome to
+          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-[#FFD700] mb-10">
+            Dashrobe
+          </h1>
+
+          <button
+            onClick={() => navigate("/vendor")}
+            className="px-8 py-3.5 rounded-lg text-base font-semibold transition-all hover:brightness-110"
+            style={{ backgroundColor: "#FFD700", color: "#1a0a6e" }}
+          >
+            Go to Vendor Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 md:space-y-8">
       <div ref={topRef}>
@@ -259,42 +362,72 @@ export function ReviewDeclaration() {
       {/* Submission status notice */}
       {isSubmitted && (submissionStatus === "REJECTED" || submissionStatus === "SUSPENDED") ? (
         <div
-          className="rounded-2xl p-4 flex items-start gap-3"
+          className="rounded-2xl p-4 flex items-start justify-between gap-3"
           style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA" }}
         >
-          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-red-800">
-            <p>
-              Your request has been {submissionStatus === "REJECTED" ? "rejected" : "suspended"}. Please contact our customer support team for assistance.
-            </p>
-            <p className="mt-1 font-medium">
-              <a href="mailto:info@dashrobe.in" className="underline">info@dashrobe.in</a>
-              {" "}or{" "}
-              <a href="tel:+919999999999" className="underline">+91 9999 999 999</a>
-            </p>
+          <div className="flex items-start gap-3">
+            <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-red-800">
+              <p>
+                Your request has been {submissionStatus === "REJECTED" ? "rejected" : "suspended"}. Please contact our customer support team for assistance.
+              </p>
+              <p className="mt-1 font-medium">
+                <a href="mailto:info@dashrobe.in" className="underline">info@dashrobe.in</a>
+                {" "}or{" "}
+                <a href="tel:+919999999999" className="underline">+91 9999 999 999</a>
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 hover:bg-red-100 transition-colors flex-shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
       ) : isSubmitted && submissionStatus === "APPROVED" ? (
         <div
-          className="rounded-2xl p-4 flex items-start gap-3"
+          className="rounded-2xl p-4 flex items-start justify-between gap-3"
           style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}
         >
-          <CircleCheck className="w-5 h-5 text-[#16A34A] flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-emerald-800">
-            <p className="text-[#16A34A]">
-              Congratulations! Your application has been approved. Welcome to Dashrobe!
-            </p>
+          <div className="flex items-start gap-3">
+            <CircleCheck className="w-5 h-5 text-[#16A34A] flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-emerald-800">
+              <p className="text-[#16A34A]">
+                Congratulations! Your application has been approved. Welcome to Dashrobe!
+              </p>
+            </div>
           </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors flex-shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
       ) : isSubmitted ? (
         <div
-          className="rounded-2xl p-4 flex items-center gap-3"
+          className="rounded-2xl p-4 flex items-center justify-between gap-3"
           style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}
         >
-          <CircleCheck className="w-5 h-5 text-emerald-600 text-[#16A34A] flex-shrink-0" />
-          <p className="text-sm text-emerald-800 text-[#16A34A]">
-            Application submitted, We're reviewing your application and will reach out within 2 days.
-          </p>
+          <div className="flex items-center gap-3">
+            <CircleCheck className="w-5 h-5 text-emerald-600 text-[#16A34A] flex-shrink-0" />
+            <p className="text-sm text-emerald-800 text-[#16A34A]">
+              Application submitted, We're reviewing your application and will reach out within 2 days.
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[#16A34A] hover:bg-emerald-100 transition-colors flex-shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
         </div>
       ) : (
         (!basicComplete || !bankComplete) && (
@@ -345,7 +478,7 @@ export function ReviewDeclaration() {
             <button
               type="button"
               onClick={() => setBasicExpanded(!basicExpanded)}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium lg:hidden"
             >
               {basicExpanded ? "Collapse" : "Expand"}
             </button>
@@ -434,7 +567,8 @@ export function ReviewDeclaration() {
             variant="ghost"
             size="sm"
             onClick={() => navigate("/onboarding")}
-            className="w-full justify-start text-[#220E92]"
+            disabled={isLocked}
+            className={`w-full justify-start text-[#220E92] ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Edit className="w-4 h-4 mr-2" />
             Edit Details
@@ -457,7 +591,10 @@ export function ReviewDeclaration() {
                       <p className="text-xs text-emerald-600 font-medium">Verified</p>
                     </>
                   ) : hasBankDetails ? (
-                    <p className="text-xs text-amber-600 font-medium">Pending Verification</p>
+                    <>
+                      <CircleCheck className="w-3.5 h-3.5 text-emerald-500" />
+                      <p className="text-xs text-emerald-600 font-medium">Completed</p>
+                    </>
                   ) : (
                     <p className="text-xs text-amber-600 font-medium">Incomplete</p>
                   )}
@@ -467,7 +604,7 @@ export function ReviewDeclaration() {
             <button
               type="button"
               onClick={() => setBankingExpanded(!bankingExpanded)}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium lg:hidden"
             >
               {bankingExpanded ? "Collapse" : "Expand"}
             </button>
@@ -529,7 +666,8 @@ export function ReviewDeclaration() {
             variant="ghost"
             size="sm"
             onClick={() => navigate("/onboarding/banking")}
-            className="w-full justify-start text-[#220E92]"
+            disabled={isLocked}
+            className={`w-full justify-start text-[#220E92] ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Edit className="w-4 h-4 mr-2" />
             Edit Banking
@@ -607,16 +745,18 @@ export function ReviewDeclaration() {
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={isLocked}
           style={{ borderRadius: '10px' }}
-          className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
+          className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           Back
         </Button>
         {isSubmitted ? (
           <Button
             onClick={handleEdit}
+            disabled={isLocked}
             style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
-            className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
+            className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Edit className="w-4 h-4 mr-2" />
             Edit Application

@@ -39,7 +39,11 @@ export default function LoginPage({ role }: LoginPageProps) {
     const token = getCookie("token");
     const savedRole = localStorage.getItem("role");
     if (token && savedRole) {
-      navigate(ROLE_REDIRECT[savedRole] || "/");
+      // Only auto-redirect if the logged-in role matches this login page's role
+      const expectedRole = role === "superadmin" ? "SUPERADMIN" : "VENDOR";
+      if (savedRole === expectedRole) {
+        navigate(ROLE_REDIRECT[savedRole] || "/");
+      }
     }
   }, []);
 

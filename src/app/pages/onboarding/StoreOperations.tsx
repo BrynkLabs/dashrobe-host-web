@@ -149,6 +149,13 @@ export function StoreOperations() {
 
   const handleNext = async () => {
     setApiError("");
+
+    if (!ops.storeLocation.trim()) {
+      setApiError("Store Location Link is required.");
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const addr = ops.storeAddress;
@@ -236,7 +243,7 @@ export function StoreOperations() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="storeLink">Store Location Link</Label>
+          <Label htmlFor="storeLink">Store Location Link *</Label>
           <Input
             id="storeLink"
             placeholder="https://maps.google.com/..."
