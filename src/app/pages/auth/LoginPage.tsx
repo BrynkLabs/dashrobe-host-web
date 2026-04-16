@@ -127,7 +127,7 @@ export default function LoginPage({ role }: LoginPageProps) {
   return (
     <div className="flex h-screen md:p-5">
       {/* LEFT SIDE */}
-      <div className="w-full md:w-1/2 flex flex-col justify-center items-center bg-[#F3F4F6] px-5">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center bg-[#F3F4F6] px-5">
         <img src={loginLogo} className="w-20 mb-6" />
 
         {step === "mobile" && (
@@ -150,6 +150,12 @@ export default function LoginPage({ role }: LoginPageProps) {
                 onChange={(e) => {
                   setPhone(e.target.value.replace(/[^0-9]/g, ""));
                   setMobileError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !loading) {
+                    e.preventDefault();
+                    handleGenerateOtp();
+                  }
                 }}
               />
               {mobileError && (
@@ -189,9 +195,16 @@ export default function LoginPage({ role }: LoginPageProps) {
                 value={otp}
                 maxLength={4}
                 inputMode="numeric"
+                autoFocus
                 onChange={(e) => {
                   setOtp(e.target.value.replace(/[^0-9]/g, ""));
                   setOtpError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !loading) {
+                    e.preventDefault();
+                    handleVerifyOtp();
+                  }
                 }}
               />
               {otpError && (
@@ -244,7 +257,7 @@ export default function LoginPage({ role }: LoginPageProps) {
       </div>
 
       {/* RIGHT SIDE - hidden on mobile */}
-      <div className="hidden md:flex w-1/2 items-center justify-center">
+      <div className="hidden lg:flex w-1/2 items-center justify-center">
         <img
           src={loginBanner}
           className="w-full h-full opacity-80"

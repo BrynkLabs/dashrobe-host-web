@@ -122,6 +122,11 @@ const AdminDashboard = lazy(() =>
 const AdminStores = lazy(() =>
   import("./pages/admin/AdminStores").then((m) => ({ default: m.AdminStores }))
 );
+const AdminStoreDetail = lazy(() =>
+  import("./pages/admin/AdminStoreDetail").then((m) => ({
+    default: m.AdminStoreDetail,
+  }))
+);
 const AdminCustomerHome = lazy(() =>
   import("./pages/admin/AdminCustomerHome").then((m) => ({
     default: m.AdminCustomerHome,
@@ -331,7 +336,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: RootLayout,
     children: [
-      { index: true, Component: RedirectToLogin },
+      { index: true, Component: RedirectToVendor },
       {
         path: "onboarding",
         Component: OnboardingLayoutRoute,
@@ -378,6 +383,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: wrap(AdminDashboard) },
           { path: "stores", Component: wrap(AdminStores) },
+          { path: "stores/:storeId", Component: wrap(AdminStoreDetail) },
           { path: "brands", Component: wrap(AdminBrands) },
           { path: "customer-home", Component: wrap(AdminCustomerHome) },
           { path: "ads-interest", Component: wrap(AdminAdsInterest) },

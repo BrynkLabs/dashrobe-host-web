@@ -44,6 +44,10 @@ function normalizePhone(val: string): string {
   return val.replace(/\D/g, "").slice(-10);
 }
 
+const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const GST_REGEX =
+  /^[0-9]{2}[A-Z]{3}[PCHFATBLJ][A-Z][0-9]{4}[A-Z][0-9A-Z][Z][0-9A-Z]$/;
+
 export function VendorBasicDetails() {
   const navigate = useNavigate();
   const { data, updateVendorBasicDetails } = useOnboarding();
@@ -61,13 +65,17 @@ export function VendorBasicDetails() {
         });
         const d = res.data?.data;
         if (d) {
+          const fetchedGstin = (d.gstin || "").toUpperCase();
+          const fetchedPan = (d.pan || "").toUpperCase();
           updateVendorBasicDetails({
             storeName: d.storeName || "",
             businessName: d.businessName || "",
             ownerName: d.ownerName || "",
             legalEntity: REVERSE_LEGAL_ENTITY_MAP[d.legalEntityType] || "",
-            gstin: d.gstin || "",
-            pan: d.pan || "",
+            gstin: fetchedGstin,
+            gstVerified: GST_REGEX.test(fetchedGstin),
+            pan: fetchedPan,
+            panVerified: PAN_REGEX.test(fetchedPan),
             address: {
               shopNo: d.registeredAddress || "",
               streetArea: d.street || "",
@@ -379,12 +387,9 @@ export function VendorBasicDetails() {
                 value={vbd.gstin}
                 onChange={(e) => {
                   const val = e.target.value.toUpperCase();
-                  const gstRegex =
-                    /^[0-9]{2}[A-Z]{3}[PCHFATBLJ][A-Z][0-9]{4}[A-Z][0-9A-Z][Z][0-9A-Z]$/;
-                  const isValid = gstRegex.test(val);
                   updateVendorBasicDetails({
                     gstin: val,
-                    gstVerified: isValid,
+                    gstVerified: GST_REGEX.test(val),
                   });
                 }}
               />
@@ -408,9 +413,10 @@ export function VendorBasicDetails() {
                 value={vbd.pan}
                 onChange={(e) => {
                   const val = e.target.value.toUpperCase();
-                  const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-                  const isValid = panRegex.test(val);
-                  updateVendorBasicDetails({ pan: val, panVerified: isValid });
+                  updateVendorBasicDetails({
+                    pan: val,
+                    panVerified: PAN_REGEX.test(val),
+                  });
                 }}
               />
               {vbd.pan && !vbd.panVerified && (
