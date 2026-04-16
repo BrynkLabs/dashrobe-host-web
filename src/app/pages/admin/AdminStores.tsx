@@ -136,15 +136,35 @@ export function ConfirmModal({
   );
 }
 
+// Format an ISO date string (e.g. "2026-04-16T14:55:35.026144") as
+// "DD-MM-YYYY h:MMAM/PM" in IST (e.g. "16-04-2026 8:25PM").
+//
+// The backend returns UTC timestamps WITHOUT a timezone marker. JS would
+// parse such strings as local time (per ES spec), which is wrong here, so
+// we explicitly tag them as UTC by appending "Z" before parsing, then add
+// the IST offset (+5:30) and read UTC components for the output.
+const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
+
+function parseAsUtc(value: string): Date {
+  const s = value.trim();
+  // If the string already specifies a timezone (Z, +HH[:]MM, -HH[:]MM
+  // after the time portion), let the parser handle it as-is.
+  const hasTz = /(Z|[+-]\d{2}:?\d{2})$/.test(s);
+  return new Date(hasTz ? s : `${s}Z`);
+}
+
 export function formatSubmittedAt(value?: string | null): string {
   if (!value) return "—";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return "—";
+  const parsed = parseAsUtc(value);
+  if (isNaN(parsed.getTime())) return "—";
+  // Shift to IST and read via UTC getters so the output is the same in
+  // any browser timezone.
+  const d = new Date(parsed.getTime() + IST_OFFSET_MS);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const hours24 = d.getHours();
+  const hours24 = d.getUTCHours();
   const period = hours24 >= 12 ? "PM" : "AM";
   const hours12 = hours24 % 12 || 12;
-  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(hours12)}:${pad(d.getMinutes())} ${period}`;
+  return `${pad(d.getUTCDate())}-${pad(d.getUTCMonth() + 1)}-${d.getUTCFullYear()} ${hours12}:${pad(d.getUTCMinutes())}${period}`;
 }
 
 export const statusConfig: Record<

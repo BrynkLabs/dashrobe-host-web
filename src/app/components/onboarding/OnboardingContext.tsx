@@ -84,6 +84,10 @@ export interface BankSettlementData {
   businessPANUploaded: boolean;
   ownerPANUploaded: boolean;
   bankProofUploaded: boolean;
+  docGstS3Key: string;
+  docBusinessPanS3Key: string;
+  docOwnerPanS3Key: string;
+  docBankProofS3Key: string;
 }
 
 export interface RefundsReturnsData {
@@ -176,6 +180,10 @@ const defaultOnboardingData: OnboardingData = {
     businessPANUploaded: false,
     ownerPANUploaded: false,
     bankProofUploaded: false,
+    docGstS3Key: "",
+    docBusinessPanS3Key: "",
+    docOwnerPanS3Key: "",
+    docBankProofS3Key: "",
   },
   refundsReturns: {
     refundPhone: "",
