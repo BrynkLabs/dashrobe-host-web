@@ -360,13 +360,14 @@ export function ReviewDeclaration() {
             Dashrobe
           </h1>
 
-          <button
+          {/* <button
             onClick={() => navigate("/vendor")}
             className="px-8 py-3.5 rounded-lg text-base font-semibold transition-all hover:brightness-110"
             style={{ backgroundColor: "#FFD700", color: "#1a0a6e" }}
           >
             Go to Vendor Dashboard
-          </button>
+          </button> */}
+          <p className="text-md text-white">Congratulations! Your application is approved. Our team will reach out to you shortly.</p>
         </div>
       </div>
     );
