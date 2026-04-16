@@ -328,12 +328,12 @@ export function BankSettlement() {
             {ifscError && (
               <p className="text-xs text-red-500">{ifscError}</p>
             )}
-            {bank.bankName && (
+            {/* {bank.bankName && (
               <div className="flex items-center gap-2">
                 <VerificationBadge verified={bank.bankVerified} label="Bank Verified" />
                 <span className="text-sm text-gray-600">{bank.bankName}</span>
               </div>
-            )}
+            )} */}
           </div>
         </div>
 
