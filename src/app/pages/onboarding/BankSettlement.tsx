@@ -34,11 +34,16 @@ export function BankSettlement() {
   const [gstError, setGstError] = useState("");
   const [ifscError, setIfscError] = useState("");
 
-  // S3 keys for uploaded documents
-  const [docGstS3Key, setDocGstS3Key] = useState("");
-  const [docBusinessPanS3Key, setDocBusinessPanS3Key] = useState("");
-  const [docOwnerPanS3Key, setDocOwnerPanS3Key] = useState("");
-  const [docBankProofS3Key, setDocBankProofS3Key] = useState("");
+  // S3 keys for uploaded documents — read from context so they survive remounts.
+  // Setters write back to the context so the keys persist across navigation.
+  const docGstS3Key = bank.docGstS3Key;
+  const docBusinessPanS3Key = bank.docBusinessPanS3Key;
+  const docOwnerPanS3Key = bank.docOwnerPanS3Key;
+  const docBankProofS3Key = bank.docBankProofS3Key;
+  const setDocGstS3Key = (v: string) => updateBankSettlement({ docGstS3Key: v });
+  const setDocBusinessPanS3Key = (v: string) => updateBankSettlement({ docBusinessPanS3Key: v });
+  const setDocOwnerPanS3Key = (v: string) => updateBankSettlement({ docOwnerPanS3Key: v });
+  const setDocBankProofS3Key = (v: string) => updateBankSettlement({ docBankProofS3Key: v });
 
   // Upload progress states
   const [gstUploading, setGstUploading] = useState(false);
@@ -63,16 +68,20 @@ export function BankSettlement() {
             accountType: REVERSE_ACCOUNT_TYPE_MAP[d.accountType] || "",
             ifscCode: d.ifscCode || "",
             upiId: d.upiId || "",
+            // Server is the source of truth for documents — only show "uploaded"
+            // when the server actually has the S3 key. Prevents stale context
+            // flags from showing "Uploaded" when the previous upload was never
+            // saved (user navigated away without clicking Next).
             gstCertificateUploaded: !!d.docGstCertificateS3Key,
             businessPANUploaded: !!d.docBusinessPanS3Key,
             ownerPANUploaded: !!d.docOwnerPanS3Key,
             bankProofUploaded: !!d.docBankProofS3Key,
+            docGstS3Key: d.docGstCertificateS3Key || "",
+            docBusinessPanS3Key: d.docBusinessPanS3Key || "",
+            docOwnerPanS3Key: d.docOwnerPanS3Key || "",
+            docBankProofS3Key: d.docBankProofS3Key || "",
           });
           if (d.accountNumber) setConfirmAccountNumber(d.accountNumber);
-          if (d.docGstCertificateS3Key) setDocGstS3Key(d.docGstCertificateS3Key);
-          if (d.docBusinessPanS3Key) setDocBusinessPanS3Key(d.docBusinessPanS3Key);
-          if (d.docOwnerPanS3Key) setDocOwnerPanS3Key(d.docOwnerPanS3Key);
-          if (d.docBankProofS3Key) setDocBankProofS3Key(d.docBankProofS3Key);
         }
       } catch (e) {
         console.error("Failed to fetch bank details:", e);
@@ -95,19 +104,35 @@ export function BankSettlement() {
 
   const isValidIfsc = (code: string) => /^[A-Z]{4}0[A-Z0-9]{6}$/.test(code);
 
+  // IFSC structure: AAAA0XXXXXX → 4 letters, '0', 6 alphanumerics (11 chars total).
+  // Validate progressively so the user sees the error on the very first wrong
+  // keystroke, not only after typing all 11 characters.
+  const validatePartialIfsc = (value: string): string => {
+    if (!value) return "";
+    for (let i = 0; i < Math.min(value.length, 4); i++) {
+      if (!/[A-Z]/.test(value[i])) {
+        return "First 4 characters must be letters (A–Z)";
+      }
+    }
+    if (value.length >= 5 && value[4] !== "0") {
+      return "5th character must be '0'";
+    }
+    for (let i = 5; i < Math.min(value.length, 11); i++) {
+      if (!/[A-Z0-9]/.test(value[i])) {
+        return "Last 6 characters must be letters or digits";
+      }
+    }
+    if (value.length > 11) return "IFSC code must be 11 characters";
+    if (value.length === 11 && !isValidIfsc(value)) return "Invalid IFSC format";
+    return "";
+  };
+
   const handleIfscChange = (value: string) => {
     updateBankSettlement({ ifscCode: value, bankVerified: false });
-    if (value.length === 0) {
-      setIfscError("");
-    } else if (value.length === 11) {
-      if (isValidIfsc(value)) {
-        setIfscError("");
-        setTimeout(() => updateBankSettlement({ bankVerified: true }), 500);
-      } else {
-        setIfscError("Invalid IFSC format");
-      }
-    } else {
-      setIfscError("");
+    const err = validatePartialIfsc(value);
+    setIfscError(err);
+    if (!err && value.length === 11) {
+      setTimeout(() => updateBankSettlement({ bankVerified: true }), 500);
     }
   };
 
@@ -184,7 +209,6 @@ export function BankSettlement() {
         confirmAccountNumber: confirmAccountNumber,
         accountType: ACCOUNT_TYPE_MAP[bank.accountType] || bank.accountType.toUpperCase(),
         ifscCode: bank.ifscCode,
-        upiId: bank.upiId,
         docGstCertificateS3Key: docGstS3Key,
         docBusinessPanS3Key: docBusinessPanS3Key,
         docOwnerPanS3Key: docOwnerPanS3Key,

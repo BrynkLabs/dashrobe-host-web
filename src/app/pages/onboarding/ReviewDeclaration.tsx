@@ -614,12 +614,7 @@ export function ReviewDeclaration() {
               <div>
                 <h4 className="font-semibold text-gray-900">Banking Info</h4>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  {bank.bankVerified ? (
-                    <>
-                      <CircleCheck className="w-3.5 h-3.5 text-emerald-500" />
-                      <p className="text-xs text-emerald-600 font-medium">Verified</p>
-                    </>
-                  ) : hasBankDetails ? (
+                  {hasBankDetails ? (
                     <>
                       <CircleCheck className="w-3.5 h-3.5 text-emerald-500" />
                       <p className="text-xs text-emerald-600 font-medium">Completed</p>

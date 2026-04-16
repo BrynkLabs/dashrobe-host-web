@@ -23,6 +23,7 @@ import {
   Bar,
 } from "recharts";
 import { Pagination, usePagination } from "../../components/Pagination";
+import { formatSubmittedAt } from "./AdminStores";
 import {
   approveStore,
   getAll,
@@ -266,7 +267,7 @@ export function AdminDashboard() {
                         className="text-muted-foreground"
                         style={{ fontSize: "12px" }}
                       >
-                        {s.submittedAt?.split("T")[0]}
+                        {formatSubmittedAt(s.submittedAt)}
                       </span>
                     </td>
                     <td className="px-4 py-3">
