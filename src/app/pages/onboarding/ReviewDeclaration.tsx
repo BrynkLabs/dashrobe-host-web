@@ -224,6 +224,7 @@ export function ReviewDeclaration() {
   const canSubmit = termsAccepted && basicComplete && bankComplete;
 
   const [submitError, setSubmitError] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async () => {
@@ -254,8 +255,35 @@ export function ReviewDeclaration() {
     }
   };
 
-  const handleEdit = () => {
-    setIsSubmitted(false);
+  const handleEdit = async () => {
+    // Only SUBMITTED/REJECTED can transition back to DRAFT.
+    // APPROVED and SUSPENDED are locked (button is disabled in that case).
+    if (submissionStatus !== "SUBMITTED" && submissionStatus !== "REJECTED") {
+      setIsSubmitted(false);
+      return;
+    }
+    setSubmitError("");
+    setIsEditing(true);
+    try {
+      const token = getCookie("token");
+      await axiosClient.post(
+        `/api/v1/onboarding/edit`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSubmissionStatus("DRAFT");
+      setIsSubmitted(false);
+      setTermsAccepted(false);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to enable editing. Please try again.";
+      setSubmitError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleBack = () => {
@@ -754,12 +782,21 @@ export function ReviewDeclaration() {
         {isSubmitted ? (
           <Button
             onClick={handleEdit}
-            disabled={isLocked}
+            disabled={isLocked || isEditing}
             style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
             className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <Edit className="w-4 h-4 mr-2" />
-            Edit Application
+            {isEditing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enabling edit...
+              </>
+            ) : (
+              <>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Application
+              </>
+            )}
           </Button>
         ) : (
           <Button

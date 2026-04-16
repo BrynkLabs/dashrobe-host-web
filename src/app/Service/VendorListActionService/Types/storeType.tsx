@@ -45,6 +45,13 @@ export type VendorDetailData = {
     gstin: string;
     pan: string;
     businessAddress: string;
+    registeredAddress?: string;
+    street?: string;
+    landmark?: string;
+    pincode?: string;
+    district?: string;
+    city?: string;
+    state?: string;
     contactPersonName: string;
     designation: string;
     phoneNumber: string;
@@ -54,6 +61,13 @@ export type VendorDetailData = {
   } | null;
   storeOperations: {
     storeLocation: string;
+    shopNo?: string;
+    street?: string;
+    landmark?: string;
+    pincode?: string;
+    district?: string;
+    city?: string;
+    state?: string;
     operatingHours: {
       day: string;
       isOpen: boolean;

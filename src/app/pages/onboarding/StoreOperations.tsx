@@ -387,30 +387,30 @@ export function StoreOperations() {
                     }))
                   ),
               },
-              {
-                label: "Weekdays only",
-                action: () =>
-                  setSchedulePreset(
-                    ops.schedule.map((s, idx) => ({
-                      ...s,
-                      isOpen: idx < 5,
-                      openTime: idx < 5 ? "09:00" : "",
-                      closeTime: idx < 5 ? "21:00" : "",
-                    }))
-                  ),
-              },
-              {
-                label: "Weekend off",
-                action: () =>
-                  setSchedulePreset(
-                    ops.schedule.map((s, idx) => ({
-                      ...s,
-                      isOpen: idx < 5,
-                      openTime: idx < 5 ? s.openTime || "09:00" : "",
-                      closeTime: idx < 5 ? s.closeTime || "21:00" : "",
-                    }))
-                  ),
-              },
+              // {
+              //   label: "Weekdays only",
+              //   action: () =>
+              //     setSchedulePreset(
+              //       ops.schedule.map((s, idx) => ({
+              //         ...s,
+              //         isOpen: idx < 5,
+              //         openTime: idx < 5 ? "09:00" : "",
+              //         closeTime: idx < 5 ? "21:00" : "",
+              //       }))
+              //     ),
+              // },
+              // {
+              //   label: "Weekend off",
+              //   action: () =>
+              //     setSchedulePreset(
+              //       ops.schedule.map((s, idx) => ({
+              //         ...s,
+              //         isOpen: idx < 5,
+              //         openTime: idx < 5 ? s.openTime || "09:00" : "",
+              //         closeTime: idx < 5 ? s.closeTime || "21:00" : "",
+              //       }))
+              //     ),
+              // },
               {
                 label: "24/7",
                 action: () =>

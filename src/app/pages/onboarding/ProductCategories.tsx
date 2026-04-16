@@ -10,6 +10,29 @@ import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
 
+const MAX_NUMERIC_VALUE = 1999999999;
+
+// Strip non-digit characters. If the resulting number would exceed
+// MAX_NUMERIC_VALUE, the input is rejected (keeps the previous value)
+// so the field stops accepting more digits at the cap.
+function sanitizeNumericInput(raw: string, previous: string = ""): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  // Drop leading zeros (e.g. "007" → "7"); keep "0" as "" so users must type a real number.
+  const trimmed = digits.replace(/^0+/, "");
+  if (!trimmed) return "";
+  const num = Number(trimmed);
+  if (num > MAX_NUMERIC_VALUE) return previous;
+  return trimmed;
+}
+
+// Block "e", "E", "+", "-", "." in number-like inputs.
+function blockNonNumericKeys(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+    e.preventDefault();
+  }
+}
+
 interface ApiSubCategory {
   id: number;
   name: string;
@@ -111,6 +134,18 @@ export function ProductCategories() {
       setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       return;
     }
+    const skuNum = Number(numberOfSkus);
+    const priceNum = Number(avgPriceRange);
+    if (!numberOfSkus || skuNum < 1 || skuNum > MAX_NUMERIC_VALUE) {
+      setApiError(`Number of SKUs must be between 1 and ${MAX_NUMERIC_VALUE}.`);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
+    if (!avgPriceRange || priceNum < 1 || priceNum > MAX_NUMERIC_VALUE) {
+      setApiError(`Average Price Range must be between 1 and ${MAX_NUMERIC_VALUE}.`);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
     setApiError("");
     setSubmitting(true);
     try {
@@ -118,7 +153,7 @@ export function ProductCategories() {
       const payload: Record<string, unknown> = {
         selectedCategoryIds,
         selectedSubcategoryIds: selectedSubcategoryIds,
-        skuCountApprox: numberOfSkus ? Number(numberOfSkus) : 0,
+        skuCountApprox: skuNum,
         pricingType: pricingType || "MRP",
         averagePriceRange: avgPriceRange,
         customizationAvailable,
@@ -315,12 +350,17 @@ export function ProductCategories() {
             </Label>
             <Input
               id="numberOfSkus"
-              type="number"
-              min={1}
+              type="text"
+              inputMode="numeric"
               placeholder="e.g., 150"
               className="rounded-lg"
               value={numberOfSkus}
-              onChange={(e) => setNumberOfSkus(e.target.value)}
+              onKeyDown={blockNonNumericKeys}
+              onPaste={(e) => {
+                e.preventDefault();
+                setNumberOfSkus((prev) => sanitizeNumericInput(e.clipboardData.getData("text"), prev));
+              }}
+              onChange={(e) => setNumberOfSkus((prev) => sanitizeNumericInput(e.target.value, prev))}
             />
             <p className="text-xs text-gray-500">Total number of unique products you plan to list</p>
           </div>
@@ -352,10 +392,17 @@ export function ProductCategories() {
             </Label>
             <Input
               id="avgPriceRange"
-              placeholder="e.g., 500-1000"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g., 750"
               className="rounded-lg"
               value={avgPriceRange}
-              onChange={(e) => setAvgPriceRange(e.target.value)}
+              onKeyDown={blockNonNumericKeys}
+              onPaste={(e) => {
+                e.preventDefault();
+                setAvgPriceRange((prev) => sanitizeNumericInput(e.clipboardData.getData("text"), prev));
+              }}
+              onChange={(e) => setAvgPriceRange((prev) => sanitizeNumericInput(e.target.value, prev))}
             />
             <p className="text-xs text-gray-500">Typical price range of your products</p>
           </div>
