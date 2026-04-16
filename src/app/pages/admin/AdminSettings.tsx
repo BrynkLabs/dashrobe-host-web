@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Settings, Save, Users, Plus, X, Mail, Shield, SquarePen,
-  CircleCheckBig, Trash2, Search, UserPlus, Clock, Eye,
+  CircleCheckBig, Trash2, Search, UserPlus, Clock, Eye, Loader2,
 } from "lucide-react";
 import { Pagination, usePagination } from "../../components/Pagination";
 import { Switch } from "../../components/ui/switch";
+import {
+  getPlatformSettings,
+  updatePlatformSettings,
+} from "../../Service/AdminService/adminSettingsService";
 
 // ─── Types ─────────────────────────────────────────
 type UserRole = "Super Admin" | "Admin" | "Manager" | "Staff";
@@ -60,7 +64,7 @@ export function AdminSettings() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-card rounded-[12px] border border-border shadow-sm p-1.5 flex gap-1">
+      {/* <div className="bg-card rounded-[12px] border border-border shadow-sm p-1.5 flex gap-1">
         {[
           { id: "general" as const, label: "General Settings", icon: Settings },
           { id: "team" as const, label: "Team & Access", icon: Users },
@@ -83,31 +87,75 @@ export function AdminSettings() {
             </button>
           );
         })}
-      </div>
+      </div> */}
 
       {activeTab === "general" && <GeneralSettingsTab />}
-      {activeTab === "team" && <TeamAccessTab />}
+      {/* {activeTab === "team" && <TeamAccessTab />} */}
     </div>
   );
 }
 
 // ─── General Settings Tab ──────────────────────────
 function GeneralSettingsTab() {
-  const [platformName, setPlatformName] = useState("Dashrobe");
-  const [supportEmail, setSupportEmail] = useState("support@dashrobe.com");
-  const [supportPhone, setSupportPhone] = useState("+91 1800-123-4567");
-  const [currency, setCurrency] = useState("INR");
-  const [timezone, setTimezone] = useState("Asia/Kolkata");
-  const [commissionRate, setCommissionRate] = useState("12");
-  const [payoutCycle, setPayoutCycle] = useState("Weekly");
-  const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [vendorRegistration, setVendorRegistration] = useState(true);
+  const [platformName, setPlatformName] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await getPlatformSettings();
+      setPlatformName(data.name || "");
+      setSupportEmail(data.supportEmail || "");
+      setSupportPhone(data.phone || "");
+    } catch {
+      setError("Failed to load settings");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      await updatePlatformSettings({
+        name: platformName,
+        supportEmail,
+        phone: supportPhone,
+      });
+      setSaved(true);
+      setEditing(false);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setError("Failed to save settings");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    fetchSettings();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -117,101 +165,81 @@ function GeneralSettingsTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
             <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Platform Name</label>
-            <input type="text" value={platformName} onChange={(e) => setPlatformName(e.target.value)} className={inputClasses} style={{ fontSize: "14px" }} />
+            <input
+              type="text"
+              value={platformName}
+              onChange={(e) => setPlatformName(e.target.value)}
+              disabled={!editing}
+              className={`${inputClasses} ${!editing ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : ""}`}
+              style={{ fontSize: "14px" }}
+            />
           </div>
           <div>
             <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Support Email</label>
-            <input type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} className={inputClasses} style={{ fontSize: "14px" }} />
+            <input
+              type="email"
+              value={supportEmail}
+              onChange={(e) => setSupportEmail(e.target.value)}
+              disabled={!editing}
+              className={`${inputClasses} ${!editing ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : ""}`}
+              style={{ fontSize: "14px" }}
+            />
           </div>
           <div>
-            <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Support Phone</label>
-            <input type="tel" value={supportPhone} onChange={(e) => setSupportPhone(e.target.value)} className={inputClasses} style={{ fontSize: "14px" }} />
-          </div>
-          <div>
-            <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Default Currency</label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={selectClasses} style={{ fontSize: "14px" }}>
-              <option value="INR">INR (₹)</option>
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Timezone</label>
-            <select value={timezone} onChange={(e) => setTimezone(e.target.value)} className={selectClasses} style={{ fontSize: "14px" }}>
-              <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
-              <option value="America/New_York">America/New_York (EST)</option>
-              <option value="Europe/London">Europe/London (GMT)</option>
-              <option value="Asia/Dubai">Asia/Dubai (GST)</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Commission Rate (%)</label>
-            <input type="number" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)} className={inputClasses} style={{ fontSize: "14px" }} min="0" max="100" />
-            <p className="text-muted-foreground mt-1" style={{ fontSize: "11px" }}>Applied to every order&apos;s subtotal</p>
+            <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Phone</label>
+            <input
+              type="tel"
+              value={supportPhone}
+              onChange={(e) => setSupportPhone(e.target.value)}
+              disabled={!editing}
+              className={`${inputClasses} ${!editing ? "bg-muted/50 text-muted-foreground cursor-not-allowed" : ""}`}
+              style={{ fontSize: "14px" }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Payout Cycle */}
-      <div className="bg-card rounded-[12px] border border-border shadow-sm p-6">
-        <h3 style={{ fontSize: "15px", fontWeight: 600 }} className="mb-5">Payout Configuration</h3>
-        <div>
-          <label className="block text-muted-foreground mb-2" style={{ fontSize: "13px", fontWeight: 500 }}>Payout Cycle</label>
-          <div className="flex gap-2 flex-wrap">
-            {["Daily", "Weekly", "Bi-weekly", "Monthly"].map((cycle) => (
-              <button
-                key={cycle}
-                onClick={() => setPayoutCycle(cycle)}
-                className={`px-4 py-2 rounded-[10px] border transition-colors ${
-                  payoutCycle === cycle
-                    ? "bg-[#220E92] text-white border-[#220E92]"
-                    : "border-border hover:bg-muted/50"
-                }`}
-                style={{ fontSize: "13px", fontWeight: 500 }}
-              >
-                {cycle}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Platform Controls */}
-      <div className="bg-card rounded-[12px] border border-border shadow-sm p-6">
-        <h3 style={{ fontSize: "15px", fontWeight: 600 }} className="mb-4">Platform Controls</h3>
-        <div className="space-y-0">
-          <div className="flex items-start justify-between gap-4 py-3 border-b border-border">
-            <div className="flex-1 min-w-0">
-              <p style={{ fontSize: "14px", fontWeight: 500 }}>Maintenance Mode</p>
-              <p className="text-muted-foreground" style={{ fontSize: "12px" }}>Temporarily disable the marketplace for all users</p>
-            </div>
-            <Switch checked={maintenanceMode} onCheckedChange={setMaintenanceMode} />
-          </div>
-          <div className="flex items-start justify-between gap-4 py-3">
-            <div className="flex-1 min-w-0">
-              <p style={{ fontSize: "14px", fontWeight: 500 }}>Open Vendor Registration</p>
-              <p className="text-muted-foreground" style={{ fontSize: "12px" }}>Allow new vendors to register and submit onboarding applications</p>
-            </div>
-            <Switch checked={vendorRegistration} onCheckedChange={setVendorRegistration} />
-          </div>
-        </div>
-      </div>
+      {error && (
+        <p className="text-destructive" style={{ fontSize: "13px", fontWeight: 500 }}>{error}</p>
+      )}
 
       <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          className="inline-flex items-center gap-2 bg-[#220E92] text-white px-4 py-2.5 rounded-[10px] hover:bg-[#220E92]/90 transition-colors"
-          style={{ fontSize: "14px", fontWeight: 500 }}
-        >
-          <Save className="w-4 h-4" /> Save Settings
-        </button>
-        {saved && (
-          <span className="text-emerald-600 flex items-center gap-1" style={{ fontSize: "13px", fontWeight: 500 }}>
-            <CircleCheckBig className="w-4 h-4" /> Settings saved
-          </span>
+        {editing ? (
+          <>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 bg-[#220E92] text-white px-4 py-2.5 rounded-[10px] hover:bg-[#220E92]/90 transition-colors disabled:opacity-50"
+              style={{ fontSize: "14px", fontWeight: 500 }}
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? "Saving..." : "Save Settings"}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-[10px] border border-border hover:bg-muted transition-colors disabled:opacity-50"
+              style={{ fontSize: "14px", fontWeight: 500 }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className="inline-flex items-center gap-2 bg-[#220E92] text-white px-4 py-2.5 rounded-[10px] hover:bg-[#220E92]/90 transition-colors"
+            style={{ fontSize: "14px", fontWeight: 500 }}
+          >
+            <SquarePen className="w-4 h-4" /> Edit Settings
+          </button>
         )}
       </div>
+
+      {saved && (
+        <span className="text-emerald-600 flex items-center gap-1" style={{ fontSize: "13px", fontWeight: 500 }}>
+          <CircleCheckBig className="w-4 h-4" /> Settings saved
+        </span>
+      )}
     </div>
   );
 }

@@ -1,252 +1,213 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { CircleAlert, Check, Shirt, ShoppingBag, Baby, Sparkles, Crown, Heart, PartyPopper, UserRound, Ribbon, Layers, Scissors, X, Hash, IndianRupee, Tag, Paintbrush, PenLine } from "lucide-react";
+import { CircleAlert, Check, Loader2, Hash, IndianRupee, Tag, Paintbrush, X, Shirt } from "lucide-react";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie } from "@/app/utils/cookieUtils";
 
-interface SubCategory {
-  id: string;
-  label: string;
+const MAX_NUMERIC_VALUE = 1999999999;
+
+// Strip non-digit characters. If the resulting number would exceed
+// MAX_NUMERIC_VALUE, the input is rejected (keeps the previous value)
+// so the field stops accepting more digits at the cap.
+function sanitizeNumericInput(raw: string, previous: string = ""): string {
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+  // Drop leading zeros (e.g. "007" → "7"); keep "0" as "" so users must type a real number.
+  const trimmed = digits.replace(/^0+/, "");
+  if (!trimmed) return "";
+  const num = Number(trimmed);
+  if (num > MAX_NUMERIC_VALUE) return previous;
+  return trimmed;
 }
 
-interface Category {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  subCategories: SubCategory[];
+// Block "e", "E", "+", "-", "." in number-like inputs.
+function blockNonNumericKeys(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (["e", "E", "+", "-", ".", ","].includes(e.key)) {
+    e.preventDefault();
+  }
+}
+
+interface ApiSubCategory {
+  id: number;
+  name: string;
+}
+
+interface ApiCategory {
+  id: number;
+  name: string;
+  subcategories: ApiSubCategory[];
 }
 
 export function ProductCategories() {
   const navigate = useNavigate();
   const { data, updateProductCategories } = useOnboarding();
   const pc = data.productCategories;
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(pc.selectedCategories);
-  const [selectedSubCategories, setSelectedSubCategories] = useState<Record<string, string[]>>(pc.selectedSubCategories);
+
+  const [loading, setLoading] = useState(true);
+  const [apiCategories, setApiCategories] = useState<ApiCategory[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<number[]>([]);
   const [showError, setShowError] = useState(false);
   const [numberOfSkus, setNumberOfSkus] = useState(pc.numberOfSkus);
   const [pricingType, setPricingType] = useState(pc.pricingType);
   const [avgPriceRange, setAvgPriceRange] = useState(pc.avgPriceRange);
   const [customizationAvailable, setCustomizationAvailable] = useState(pc.customizationAvailable);
   const [customCategoryText, setCustomCategoryText] = useState(pc.customCategoryText);
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const topRef = useRef<HTMLDivElement>(null);
 
-  const categories: Category[] = [
-    {
-      id: "mens-casual",
-      label: "Men's Casual Wear",
-      icon: <Shirt className="w-5 h-5" />,
-      subCategories: [
-        { id: "mc-tshirts", label: "T-Shirts & Polos" },
-        { id: "mc-jeans", label: "Jeans & Trousers" },
-        { id: "mc-shorts", label: "Shorts & Bermudas" },
-        { id: "mc-hoodies", label: "Hoodies & Sweatshirts" },
-      ],
-    },
-    {
-      id: "mens-formal",
-      label: "Men's Formal Wear",
-      icon: <Crown className="w-5 h-5" />,
-      subCategories: [
-        { id: "mf-shirts", label: "Formal Shirts" },
-        { id: "mf-trousers", label: "Formal Trousers" },
-        { id: "mf-blazers", label: "Blazers & Suits" },
-        { id: "mf-jackets", label: "Waistcoats & Jackets" },
-      ],
-    },
-    {
-      id: "mens-ethnic",
-      label: "Men's Ethnic Wear",
-      icon: <Layers className="w-5 h-5" />,
-      subCategories: [
-        { id: "me-kurtas", label: "Kurtas & Kurta Sets" },
-        { id: "me-sherwanis", label: "Sherwanis" },
-        { id: "me-nehru", label: "Nehru Jackets" },
-        { id: "me-dhotis", label: "Dhotis & Lungis" },
-      ],
-    },
-    {
-      id: "womens-western",
-      label: "Women's Western Wear",
-      icon: <ShoppingBag className="w-5 h-5" />,
-      subCategories: [
-        { id: "ww-tops", label: "Tops & Blouses" },
-        { id: "ww-dresses", label: "Dresses & Jumpsuits" },
-        { id: "ww-jeans", label: "Jeans & Palazzos" },
-        { id: "ww-skirts", label: "Skirts & Shorts" },
-      ],
-    },
-    {
-      id: "womens-ethnic",
-      label: "Women's Ethnic Wear",
-      icon: <Sparkles className="w-5 h-5" />,
-      subCategories: [
-        { id: "we-sarees", label: "Sarees" },
-        { id: "we-salwar", label: "Salwar Suits" },
-        { id: "we-kurtas", label: "Kurtas & Kurtis" },
-        { id: "we-lehengas", label: "Lehengas & Gowns" },
-      ],
-    },
-    {
-      id: "womens-casual",
-      label: "Women's Casual Wear",
-      icon: <Heart className="w-5 h-5" />,
-      subCategories: [
-        { id: "wc-tshirts", label: "T-Shirts & Crop Tops" },
-        { id: "wc-joggers", label: "Joggers & Leggings" },
-        { id: "wc-coords", label: "Co-ord Sets" },
-        { id: "wc-jackets", label: "Jackets & Shrugs" },
-      ],
-    },
-    {
-      id: "kids-boys",
-      label: "Kids Boys Wear",
-      icon: <Baby className="w-5 h-5" />,
-      subCategories: [
-        { id: "kb-tshirts", label: "T-Shirts & Shirts" },
-        { id: "kb-bottoms", label: "Jeans & Joggers" },
-        { id: "kb-sets", label: "Clothing Sets" },
-        { id: "kb-ethnic", label: "Ethnic Wear" },
-      ],
-    },
-    {
-      id: "kids-girls",
-      label: "Kids Girls Wear",
-      icon: <Ribbon className="w-5 h-5" />,
-      subCategories: [
-        { id: "kg-dresses", label: "Dresses & Frocks" },
-        { id: "kg-tops", label: "Tops & T-Shirts" },
-        { id: "kg-ethnic", label: "Ethnic Wear" },
-        { id: "kg-sets", label: "Clothing Sets" },
-      ],
-    },
-    {
-      id: "party-occasion",
-      label: "Party & Occasion Wear",
-      icon: <PartyPopper className="w-5 h-5" />,
-      subCategories: [
-        { id: "po-cocktail", label: "Cocktail & Evening" },
-        { id: "po-wedding", label: "Wedding Collection" },
-        { id: "po-festive", label: "Festive Wear" },
-        { id: "po-prom", label: "Prom & Reception" },
-      ],
-    },
-    {
-      id: "plus-size",
-      label: "Plus Size Clothing",
-      icon: <UserRound className="w-5 h-5" />,
-      subCategories: [
-        { id: "ps-mens", label: "Men's Plus Size" },
-        { id: "ps-womens", label: "Women's Plus Size" },
-        { id: "ps-ethnic", label: "Ethnic Plus Size" },
-        { id: "ps-casual", label: "Casual Plus Size" },
-      ],
-    },
-    {
-      id: "maternity",
-      label: "Maternity Wear",
-      icon: <Heart className="w-5 h-5" />,
-      subCategories: [
-        { id: "mt-dresses", label: "Maternity Dresses" },
-        { id: "mt-tops", label: "Maternity Tops" },
-        { id: "mt-bottoms", label: "Maternity Bottoms" },
-        { id: "mt-ethnic", label: "Maternity Ethnic" },
-      ],
-    },
-    {
-      id: "handmade",
-      label: "Handloom & Stitched",
-      icon: <Scissors className="w-5 h-5" />,
-      subCategories: [
-        { id: "hm-custom", label: "Custom Stitched" },
-        { id: "hm-handloom", label: "Handloom Fabrics" },
-        { id: "hm-embroidered", label: "Embroidered Pieces" },
-        { id: "hm-designer", label: "Designer Boutique" },
-      ],
-    },
-    {
-      id: "other",
-      label: "Other",
-      icon: <PenLine className="w-5 h-5" />,
-      subCategories: [],
-    },
-  ];
+  // Fetch categories and vendor's previous selections on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = getCookie("token");
+        const headers = { Authorization: `Bearer ${token}` };
 
-  const toggleCategory = (id: string) => {
+        const categoriesRes = await axiosClient.get(`/api/v1/onboarding/categories`, { headers });
+        const cats: ApiCategory[] = categoriesRes.data?.data?.categories || [];
+        setApiCategories(cats);
+
+        try {
+          const selectionsRes = await axiosClient.get(`/api/v1/onboarding/product-categories`, { headers });
+          const sel = selectionsRes.data?.data;
+          if (sel) {
+            setSelectedCategoryIds(sel.selectedCategoryIds || []);
+            setSelectedSubcategoryIds(sel.selectedSubcategoryIds || []);
+            setNumberOfSkus(sel.skuCountApprox ? String(sel.skuCountApprox) : "");
+            setPricingType(sel.pricingType || "");
+            setAvgPriceRange(sel.averagePriceRange || "");
+            setCustomizationAvailable(sel.customizationAvailable ?? false);
+            if (sel.customCategories) {
+              setCustomCategoryText(sel.customCategories);
+            }
+          }
+        } catch {
+          // No previous selections — that's fine
+        }
+      } catch (e) {
+        console.error("Failed to fetch categories:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleCategory = (catId: number) => {
     setShowError(false);
-    const isRemoving = selectedCategories.includes(id);
+    const isRemoving = selectedCategoryIds.includes(catId);
     if (isRemoving) {
-      setSelectedCategories((prev) => prev.filter((c) => c !== id));
-      setSelectedSubCategories((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
+      setSelectedCategoryIds((prev) => prev.filter((id) => id !== catId));
+      // Remove all subcategories of this category
+      const cat = apiCategories.find((c) => c.id === catId);
+      if (cat) {
+        const subIds = cat.subcategories.map((s) => s.id);
+        setSelectedSubcategoryIds((prev) => prev.filter((id) => !subIds.includes(id)));
+      }
     } else {
-      setSelectedCategories((prev) => [...prev, id]);
+      setSelectedCategoryIds((prev) => [...prev, catId]);
     }
   };
 
-  const toggleSubCategory = (categoryId: string, subId: string) => {
+  const toggleSubcategory = (subId: number) => {
     setShowError(false);
-    setSelectedSubCategories((prev) => {
-      const current = prev[categoryId] || [];
-      const isRemoving = current.includes(subId);
-      return {
-        ...prev,
-        [categoryId]: isRemoving
-          ? current.filter((s) => s !== subId)
-          : [...current, subId],
-      };
-    });
-  };
-
-  const hasValidSelection = () => {
-    return selectedCategories.some(
-      (catId) => {
-        if (catId === "other") return customCategoryText.trim().length > 0;
-        return (selectedSubCategories[catId] || []).length > 0;
-      }
+    setSelectedSubcategoryIds((prev) =>
+      prev.includes(subId) ? prev.filter((id) => id !== subId) : [...prev, subId]
     );
   };
 
-  const syncToContext = () => {
+  const hasValidSelection = () => {
+    return selectedCategoryIds.length > 0 && selectedSubcategoryIds.length > 0;
+  };
+
+  const handleNext = async () => {
+    if (!hasValidSelection()) {
+      setShowError(true);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
+    const skuNum = Number(numberOfSkus);
+    const priceNum = Number(avgPriceRange);
+    if (!numberOfSkus || skuNum < 1 || skuNum > MAX_NUMERIC_VALUE) {
+      setApiError(`Number of SKUs must be between 1 and ${MAX_NUMERIC_VALUE}.`);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
+    if (!avgPriceRange || priceNum < 1 || priceNum > MAX_NUMERIC_VALUE) {
+      setApiError(`Average Price Range must be between 1 and ${MAX_NUMERIC_VALUE}.`);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
+    setApiError("");
+    setSubmitting(true);
+    try {
+      const token = getCookie("token");
+      const payload: Record<string, unknown> = {
+        selectedCategoryIds,
+        selectedSubcategoryIds: selectedSubcategoryIds,
+        skuCountApprox: skuNum,
+        pricingType: pricingType || "MRP",
+        averagePriceRange: avgPriceRange,
+        customizationAvailable,
+      };
+
+
+      await axiosClient.put(`/api/v1/onboarding/product-categories`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Sync to context for local state
+      updateProductCategories({
+        selectedCategories: selectedCategoryIds.map(String),
+        selectedSubCategories: {},
+        numberOfSkus,
+        pricingType,
+        avgPriceRange,
+        customizationAvailable,
+        customCategoryText,
+      });
+
+      navigate("/onboarding/banking");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setApiError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBack = () => {
     updateProductCategories({
-      selectedCategories,
-      selectedSubCategories,
+      selectedCategories: selectedCategoryIds.map(String),
+      selectedSubCategories: {},
       numberOfSkus,
       pricingType,
       avgPriceRange,
       customizationAvailable,
       customCategoryText,
     });
-  };
-
-  const handleNext = () => {
-    if (!hasValidSelection()) {
-      setShowError(true);
-      return;
-    }
-    syncToContext();
-    navigate("/onboarding/banking");
-  };
-
-  const handleBack = () => {
-    syncToContext();
     navigate("/onboarding/operations");
   };
 
-  // Build rows with inline sub-category panels
+  // Build grid items with inline sub-category panels
   const buildGridItems = () => {
     const items: React.ReactNode[] = [];
 
-    categories.forEach((category) => {
-      const isSelected = selectedCategories.includes(category.id);
-      const subCount = (selectedSubCategories[category.id] || []).length;
+    apiCategories.forEach((category) => {
+      const isSelected = selectedCategoryIds.includes(category.id);
+      const subCount = category.subcategories.filter((s) =>
+        selectedSubcategoryIds.includes(s.id)
+      ).length;
 
-      // Category card
       items.push(
         <button
           key={category.id}
@@ -263,14 +224,12 @@ export function ProductCategories() {
               <Check className="w-3 h-3 text-white" />
             </div>
           )}
-
           <div className={`mb-2 ${isSelected ? "text-[#220E92]" : "text-gray-400"}`}>
-            {category.icon}
+            <Shirt className="w-5 h-5" />
           </div>
           <span className={`text-xs md:text-sm font-medium leading-tight ${isSelected ? "text-[#220E92]" : "text-gray-700"}`}>
-            {category.label}
+            {category.name}
           </span>
-
           {subCount > 0 && (
             <span className="mt-1.5 text-[10px] md:text-xs bg-[#220E92] text-white px-2 py-0.5 rounded-full leading-normal">
               {subCount} selected
@@ -279,194 +238,99 @@ export function ProductCategories() {
         </button>
       );
 
-      // Sub-category row right after selected category — spans full grid width
-      if (isSelected) {
-        if (category.id === "other") {
-          // Show free text field for "Other" category
-          items.push(
-            <div
-              key={`sub-${category.id}`}
-              style={{ gridColumn: "1 / -1" }}
-              className="bg-gradient-to-r from-[#220E92]/[0.03] to-[#220E92]/[0.06] border border-[#220E92]/15 rounded-xl p-4 md:p-5"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-[#220E92]/10 flex items-center justify-center text-[#220E92]">
-                    {category.icon}
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-[#220E92]">{category.label}</span>
-                    <span className="text-xs text-gray-500 ml-2">— describe your category</span>
-                  </div>
+      if (isSelected && category.subcategories.length > 0) {
+        items.push(
+          <div
+            key={`sub-${category.id}`}
+            style={{ gridColumn: "1 / -1" }}
+            className="bg-gradient-to-r from-[#220E92]/[0.03] to-[#220E92]/[0.06] border border-[#220E92]/15 rounded-xl p-4 md:p-5"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#220E92]/10 flex items-center justify-center text-[#220E92]">
+                  <Shirt className="w-4 h-4" />
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCategory(category.id);
-                  }}
-                  className="text-xs text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
-                  title="Remove category"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div>
+                  <span className="text-sm font-semibold text-[#220E92]">{category.name}</span>
+                  <span className="text-xs text-gray-500 ml-2">— choose sub-categories</span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="customCategory" className="text-sm text-[#220E92]">
-                  What category do you sell? *
-                </Label>
-                <Input
-                  id="customCategory"
-                  placeholder="e.g., Accessories, Footwear, Bags, Innerwear..."
-                  className="rounded-lg bg-white"
-                  value={customCategoryText}
-                  onChange={(e) => setCustomCategoryText(e.target.value)}
-                />
-                <p className="text-xs text-gray-500">Enter the category or product type that isn't listed above</p>
-              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCategory(category.id);
+                }}
+                className="text-xs text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
+                title="Remove category"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          );
-        } else {
-          items.push(
-            <div
-              key={`sub-${category.id}`}
-              style={{ gridColumn: "1 / -1" }}
-              className="bg-gradient-to-r from-[#220E92]/[0.03] to-[#220E92]/[0.06] border border-[#220E92]/15 rounded-xl p-4 md:p-5"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-[#220E92]/10 flex items-center justify-center text-[#220E92]">
-                    {category.icon}
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-[#220E92]">{category.label}</span>
-                    <span className="text-xs text-gray-500 ml-2">— choose sub-categories</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleCategory(category.id);
-                  }}
-                  className="text-xs text-gray-400 hover:text-red-500 p-1 rounded hover:bg-red-50 transition-colors"
-                  title="Remove category"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {category.subCategories.map((sub) => {
-                  const isSubSelected = (selectedSubCategories[category.id] || []).includes(sub.id);
-                  return (
-                    <button
-                      key={sub.id}
-                      type="button"
-                      onClick={() => toggleSubCategory(category.id, sub.id)}
-                      className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm transition-all ${
+            <div className="flex flex-wrap gap-2">
+              {category.subcategories.map((sub) => {
+                const isSubSelected = selectedSubcategoryIds.includes(sub.id);
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => toggleSubcategory(sub.id)}
+                    className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm transition-all ${
+                      isSubSelected
+                        ? "bg-[#220E92] text-white shadow-sm"
+                        : "bg-white border border-gray-200 text-gray-700 hover:border-[#220E92]/40 hover:shadow-sm"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
                         isSubSelected
-                          ? "bg-[#220E92] text-white shadow-sm"
-                          : "bg-white border border-gray-200 text-gray-700 hover:border-[#220E92]/40 hover:shadow-sm"
+                          ? "bg-white/20 border-white/50"
+                          : "border-gray-300 bg-white"
                       }`}
                     >
-                      <div
-                        className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                          isSubSelected
-                            ? "bg-white/20 border-white/50"
-                            : "border-gray-300 bg-white"
-                        }`}
-                      >
-                        {isSubSelected && <Check className="w-2.5 h-2.5" />}
-                      </div>
-                      {sub.label}
-                    </button>
-                  );
-                })}
-              </div>
+                      {isSubSelected && <Check className="w-2.5 h-2.5" />}
+                    </div>
+                    {sub.name}
+                  </button>
+                );
+              })}
             </div>
-          );
-        }
+          </div>
+        );
       }
     });
 
     return items;
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Product Categories</h2>
         <p className="text-sm md:text-base text-gray-600">Select the clothing categories and sub-categories you sell</p>
       </div>
 
-      {/* Validation Error */}
+      {apiError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{apiError}</p>
+        </div>
+      )}
+
       {showError && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
           <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-red-800">
             Please select at least one category and one sub-category to continue.
           </p>
-        </div>
-      )}
-
-      {/* Category Grid with Inline Sub-categories */}
-      <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-5 shadow-sm">
-        <div>
-          <Label className="text-base">Select Categories You Sell *</Label>
-          <p className="text-sm text-gray-600 mt-1">Click a category to select it — sub-categories will appear right below</p>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          {buildGridItems()}
-        </div>
-      </div>
-
-      {/* Selected Summary */}
-      {selectedCategories.length > 0 && (
-        <div className="bg-[#220E92]/[0.03] rounded-xl border border-[#220E92]/10 p-4 md:p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-[#220E92]">Your Selection</h4>
-            <span className="text-xs text-gray-500">
-              {selectedCategories.length} {selectedCategories.length === 1 ? "category" : "categories"}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {selectedCategories.map((catId) => {
-              const cat = categories.find((c) => c.id === catId);
-              const subs = selectedSubCategories[catId] || [];
-              if (!cat) return null;
-              return (
-                <div key={catId} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2.5 py-2 px-3 rounded-lg bg-white">
-                  <span className="text-sm text-gray-800 font-medium whitespace-nowrap">{cat.label}</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {catId === "other" ? (
-                      customCategoryText.trim() ? (
-                        <span className="text-xs bg-[#220E92]/10 text-[#220E92] px-2 py-0.5 rounded-md">
-                          {customCategoryText}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-amber-600 italic">Enter your custom category</span>
-                      )
-                    ) : subs.length > 0 ? (
-                      subs.map((subId) => {
-                        const sub = cat.subCategories.find((s) => s.id === subId);
-                        return (
-                          <span
-                            key={subId}
-                            className="text-xs bg-[#220E92]/10 text-[#220E92] px-2 py-0.5 rounded-md"
-                          >
-                            {sub?.label}
-                          </span>
-                        );
-                      })
-                    ) : (
-                      <span className="text-xs text-amber-600 italic">Choose sub-categories</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
@@ -486,12 +350,17 @@ export function ProductCategories() {
             </Label>
             <Input
               id="numberOfSkus"
-              type="number"
-              min={1}
+              type="text"
+              inputMode="numeric"
               placeholder="e.g., 150"
               className="rounded-lg"
               value={numberOfSkus}
-              onChange={(e) => setNumberOfSkus(e.target.value)}
+              onKeyDown={blockNonNumericKeys}
+              onPaste={(e) => {
+                e.preventDefault();
+                setNumberOfSkus((prev) => sanitizeNumericInput(e.clipboardData.getData("text"), prev));
+              }}
+              onChange={(e) => setNumberOfSkus((prev) => sanitizeNumericInput(e.target.value, prev))}
             />
             <p className="text-xs text-gray-500">Total number of unique products you plan to list</p>
           </div>
@@ -507,9 +376,9 @@ export function ProductCategories() {
                 <SelectValue placeholder="Select pricing type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="economy">Economy</SelectItem>
-                <SelectItem value="value-for-money">Value for Money</SelectItem>
-                <SelectItem value="premium">Premium</SelectItem>
+                <SelectItem value="PREMIUM">Premium</SelectItem>
+                <SelectItem value="VALUE_FOR_MONEY">Value for money</SelectItem>
+                <SelectItem value="ECONOMICAL">Economical</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-gray-500">The pricing segment your products fall under</p>
@@ -523,10 +392,17 @@ export function ProductCategories() {
             </Label>
             <Input
               id="avgPriceRange"
-              placeholder="e.g., ₹500 – ₹2,000"
+              type="text"
+              inputMode="numeric"
+              placeholder="e.g., 750"
               className="rounded-lg"
               value={avgPriceRange}
-              onChange={(e) => setAvgPriceRange(e.target.value)}
+              onKeyDown={blockNonNumericKeys}
+              onPaste={(e) => {
+                e.preventDefault();
+                setAvgPriceRange((prev) => sanitizeNumericInput(e.clipboardData.getData("text"), prev));
+              }}
+              onChange={(e) => setAvgPriceRange((prev) => sanitizeNumericInput(e.target.value, prev))}
             />
             <p className="text-xs text-gray-500">Typical price range of your products</p>
           </div>
@@ -559,11 +435,59 @@ export function ProductCategories() {
         </div>
       </div>
 
+      {/* Category Grid with Inline Sub-categories */}
+      <div className="bg-white rounded-2xl border border-gray-200/80 p-4 md:p-6 lg:p-8 space-y-5 shadow-sm">
+        <div>
+          <Label className="text-base">Select Categories You Sell *</Label>
+          <p className="text-sm text-gray-600 mt-1">Click a category to select it — sub-categories will appear right below</p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          {buildGridItems()}
+        </div>
+      </div>
+
+      {/* Selected Summary */}
+      {selectedCategoryIds.length > 0 && (
+        <div className="bg-[#220E92]/[0.03] rounded-xl border border-[#220E92]/10 p-4 md:p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-[#220E92]">Your Selection</h4>
+            <span className="text-xs text-gray-500">
+              {selectedCategoryIds.length} {selectedCategoryIds.length === 1 ? "category" : "categories"}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {selectedCategoryIds.map((catId) => {
+              const cat = apiCategories.find((c) => c.id === catId);
+              if (!cat) return null;
+              const subs = cat.subcategories.filter((s) => selectedSubcategoryIds.includes(s.id));
+              return (
+                <div key={catId} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2.5 py-2 px-3 rounded-lg bg-white">
+                  <span className="text-sm text-gray-800 font-medium whitespace-nowrap">{cat.name}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {subs.length > 0 ? (
+                      subs.map((sub) => (
+                        <span key={sub.id} className="text-xs bg-[#220E92]/10 text-[#220E92] px-2 py-0.5 rounded-md">
+                          {sub.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-amber-600 italic">Choose sub-categories</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={submitting}
           style={{ borderRadius: "12px" }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
         >
@@ -571,10 +495,18 @@ export function ProductCategories() {
         </Button>
         <Button
           onClick={handleNext}
+          disabled={submitting}
           style={{ backgroundColor: "#220E92", borderRadius: "12px" }}
           className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium shadow-lg shadow-[#220E92]/20 hover:shadow-xl hover:shadow-[#220E92]/25 transition-all"
         >
-          Continue to Bank & Settlement
+          {submitting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Continue to Bank & Settlement"
+          )}
         </Button>
       </div>
     </div>

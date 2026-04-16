@@ -1,31 +1,40 @@
-import { useState } from "react";
-import { motion } from "motion/react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Checkbox } from "../../components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { formatAddress } from "../../components/onboarding/AddressFields";
-import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info } from "lucide-react";
+import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
+import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
+import { getCookie, removeCookie } from "@/app/utils/cookieUtils";
+import { logoutUser } from "@/app/Service/AuthService/authService";
+import containerIcon from "@/assets/icons/Container.png";
 
-interface CommitmentItem {
-  id: string;
-  label: string;
-}
+const LEGAL_ENTITY_MAP: Record<string, string> = {
+  sole: "SOLE_PROPRIETORSHIP",
+  partnership: "PARTNERSHIP",
+  private: "PRIVATE_LIMITED",
+  llp: "LLP",
+  others: "OTHERS",
+};
 
-const commitments: CommitmentItem[] = [
-  { id: "info-accurate", label: "All information provided in this application is accurate and up-to-date." },
-  { id: "legal-authority", label: "I have the legal authority to represent and act on behalf of this business." },
-  { id: "product-compliance", label: "All products listed comply with Indian laws, regulations, and quality standards." },
-  { id: "vendor-terms", label: "I accept Dashrobe's Vendor Terms & Conditions and Privacy Policy." },
-  { id: "quality-standards", label: "I commit to maintaining product quality and accurate listings at all times." },
-  { id: "document-verification", label: "I authorize Dashrobe to verify all submitted documents and business credentials." },
-  { id: "order-acceptance", label: "I commit to accepting or rejecting orders within 5 minutes of receiving them." },
-  { id: "packing-sla", label: "I commit to packing accepted orders within the preparation time specified during onboarding." },
-  { id: "inventory-accuracy", label: "I will keep inventory levels updated to avoid order cancellations due to stock-outs." },
-  { id: "settlement-terms", label: "I understand and accept the weekly settlement cycle (T+7 days from delivery)." },
-  { id: "delivery-integration", label: "I acknowledge that Dashrobe handles all logistics and delivery operations." },
-  { id: "communication", label: "I agree to maintain responsive communication via the registered WhatsApp number." },
-];
+const REVERSE_LEGAL_ENTITY_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(LEGAL_ENTITY_MAP).map(([k, v]) => [v, k])
+);
+
+const REVERSE_ACCOUNT_TYPE_MAP: Record<string, string> = {
+  SAVINGS: "savings",
+  CURRENT: "current",
+};
+
 
 const legalEntityLabels: Record<string, string> = {
   sole: "Sole Proprietorship",
@@ -42,54 +51,246 @@ const accountTypeLabels: Record<string, string> = {
 
 export function ReviewDeclaration() {
   const navigate = useNavigate();
-  const { data } = useOnboarding();
+  const { data, updateVendorBasicDetails, updateBankSettlement } = useOnboarding();
   const vbd = data.vendorBasicDetails;
   const bank = data.bankSettlement;
 
-  const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [tncOpen, setTncOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionStatus, setSubmissionStatus] = useState("");
   const [showError, setShowError] = useState(false);
   const [basicExpanded, setBasicExpanded] = useState(true);
   const [bankingExpanded, setBankingExpanded] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showApproved, setShowApproved] = useState(false);
 
-  const allChecked = commitments.every((c) => checkedItems[c.id] === true);
-  const checkedCount = commitments.filter((c) => checkedItems[c.id]).length;
+  const isLocked = submissionStatus === "APPROVED" || submissionStatus === "SUSPENDED";
 
-  const toggleItem = (id: string) => {
-    setShowError(false);
-    setCheckedItems((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const toggleAll = () => {
-    if (allChecked) {
-      setCheckedItems({});
-    } else {
-      const all: Record<string, boolean> = {};
-      commitments.forEach((c) => { all[c.id] = true; });
-      setCheckedItems(all);
+  const handleLogout = async () => {
+    try {
+      const token = getCookie("token");
+      if (token) await logoutUser(token);
+    } catch {
+      // proceed with local cleanup
+    } finally {
+      removeCookie("token");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("phoneNumber");
+      localStorage.removeItem("userType");
+      localStorage.removeItem("role");
+      localStorage.removeItem("newUser");
+      window.location.reload();
     }
-    setShowError(false);
   };
+
+  const fetchStatus = async () => {
+    const token = getCookie("token");
+    const auth = { headers: { Authorization: `Bearer ${token}` } };
+    try {
+      const statusRes = await axiosClient.get(`/api/v1/onboarding/status`, auth);
+      const d = statusRes.data?.data;
+      if (d?.status) {
+        setSubmissionStatus(d.status);
+        if (d.status === "SUBMITTED" || d.status === "REJECTED" || d.status === "SUSPENDED" || d.status === "APPROVED") {
+          setIsSubmitted(true);
+          setTermsAccepted(true);
+        }
+        if (d.status === "APPROVED") {
+          setShowApproved(true);
+        }
+        if (d.status === "SUSPENDED") {
+          handleLogout();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch onboarding status:", error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchStatus();
+    setRefreshing(false);
+  };
+
+  // Fetch basic details and bank settlement on mount
+  useEffect(() => {
+    const fetchAll = async () => {
+      const token = getCookie("token");
+      const auth = { headers: { Authorization: `Bearer ${token}` } };
+
+      const [basicRes, bankRes] = await Promise.allSettled([
+        axiosClient.get(`/api/v1/onboarding/basic-details`, auth),
+        axiosClient.get(`/api/v1/onboarding/bank-settlement`, auth),
+      ]);
+
+      if (basicRes.status === "fulfilled") {
+        const d = basicRes.value.data?.data;
+        if (d) {
+          updateVendorBasicDetails({
+            storeName: d.storeName || "",
+            businessName: d.businessName || "",
+            ownerName: d.ownerName || "",
+            legalEntity: REVERSE_LEGAL_ENTITY_MAP[d.legalEntityType] || "",
+            gstin: d.gstin || "",
+            pan: d.pan || "",
+            address: {
+              shopNo: d.registeredAddress || "",
+              streetArea: d.street || "",
+              landmark: d.landmark || "",
+              pincode: d.pincode || "",
+              district: d.district || "",
+              city: d.city || "",
+              state: d.state || "",
+            },
+            contactPerson: d.contactPersonName || "",
+            designation: d.designation || "",
+            phone: d.phoneNumber || "",
+            altPhone: d.alternatePhone || "",
+            email: d.email || d.vendorEmail || "",
+            contact2Name: d.secondaryContactName || "",
+            contact2Designation: d.secondaryDesignation || "",
+            contact2Phone: d.secondaryPhone || "",
+            contact2Email: d.secondaryEmail || "",
+          });
+        }
+      } else {
+        console.error("Failed to fetch basic details:", basicRes.reason);
+      }
+
+      if (bankRes.status === "fulfilled") {
+        const d = bankRes.value.data?.data;
+        if (d) {
+          updateBankSettlement({
+            accountHolder: d.accountHolderName || "",
+            bankName: d.bankName || "",
+            accountNumber: d.accountNumber || "",
+            accountType: REVERSE_ACCOUNT_TYPE_MAP[d.accountType] || "",
+            ifscCode: d.ifscCode || "",
+            upiId: d.upiId || "",
+            gstCertificateUploaded: !!d.docGstCertificateS3Key,
+            businessPANUploaded: !!d.docBusinessPanS3Key,
+            ownerPANUploaded: !!d.docOwnerPanS3Key,
+            bankProofUploaded: !!d.docBankProofS3Key,
+          });
+        }
+      } else {
+        console.error("Failed to fetch bank settlement:", bankRes.reason);
+      }
+
+      await fetchStatus();
+      setLoading(false);
+    };
+    fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleTerms = (v: boolean) => {
+    setShowError(false);
+    setTermsAccepted(v);
+  };
+
+  // Required-field completeness checks
+  const basicComplete = !!(
+    vbd.storeName &&
+    vbd.businessName &&
+    vbd.ownerName &&
+    vbd.legalEntity &&
+    vbd.pan &&
+    vbd.address.shopNo &&
+    vbd.address.streetArea &&
+    vbd.address.pincode &&
+    vbd.address.district &&
+    vbd.address.city &&
+    vbd.address.state &&
+    vbd.contactPerson &&
+    vbd.designation &&
+    vbd.phone &&
+    vbd.email
+  );
+
+  const bankComplete = !!(
+    bank.accountHolder &&
+    bank.bankName &&
+    bank.accountNumber &&
+    bank.accountType &&
+    bank.ifscCode &&
+    bank.ownerPANUploaded
+  );
+
+  const canSubmit = termsAccepted && basicComplete && bankComplete;
+
+  const [submitError, setSubmitError] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const topRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async () => {
-    if (!allChecked) {
+    if (!canSubmit) {
       setShowError(true);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       return;
     }
 
+    setSubmitError("");
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const token = getCookie("token");
+      await axiosClient.post(
+        `/api/v1/onboarding/submit`,
+        { declarationsAccepted: true },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       setIsSubmitted(true);
-    }, 2000);
+      setSubmissionStatus("SUBMITTED");
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
+      setSubmitError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleEdit = async () => {
+    // Only SUBMITTED/REJECTED can transition back to DRAFT.
+    // APPROVED and SUSPENDED are locked (button is disabled in that case).
+    if (submissionStatus !== "SUBMITTED" && submissionStatus !== "REJECTED") {
+      setIsSubmitted(false);
+      return;
+    }
+    setSubmitError("");
+    setIsEditing(true);
+    try {
+      const token = getCookie("token");
+      await axiosClient.post(
+        `/api/v1/onboarding/edit`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSubmissionStatus("DRAFT");
+      setIsSubmitted(false);
+      setTermsAccepted(false);
+    } catch (err: any) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to enable editing. Please try again.";
+      setSubmitError(msg);
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } finally {
+      setIsEditing(false);
+    }
   };
 
   const handleBack = () => {
-    navigate("/onboarding/technology");
+    navigate("/onboarding/offers");
   };
 
-  // Helper to check if fields have data
+  // Display flags for the section header status
   const hasBasicDetails = vbd.storeName || vbd.businessName || vbd.ownerName || vbd.phone || vbd.email;
   const hasBankDetails = bank.accountHolder || bank.bankName || bank.accountNumber || bank.ifscCode;
 
@@ -98,173 +299,75 @@ export function ReviewDeclaration() {
     ? "\u25CF\u25CF\u25CF\u25CF\u25CF\u25CF\u25CF\u25CF " + bank.accountNumber.slice(-4)
     : "";
 
-  // ─── Full-screen Welcome Page after successful submission ─────
-  if (isSubmitted) {
-    // Generate confetti pieces once
-    const confettiColors = ["#FFC100", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96E6A1", "#DDA0DD", "#FFD93D", "#FF8C42", "#ffffff"];
-    const confettiPieces = Array.from({ length: 60 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      color: confettiColors[i % confettiColors.length],
-      size: Math.random() * 8 + 4,
-      delay: Math.random() * 1.5,
-      duration: Math.random() * 2 + 2,
-      rotation: Math.random() * 720 - 360,
-      shape: i % 3, // 0 = square, 1 = circle, 2 = rectangle
-    }));
-
+  if (loading) {
     return (
-      <div className="fixed inset-0 z-50 bg-gradient-to-br from-[#220E92] via-[#2D14B3] to-[#1a0a6e] flex items-center justify-center overflow-hidden">
-        {/* Confetti animation */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-20">
-          {confettiPieces.map((piece) => (
-            <motion.div
-              key={piece.id}
-              className="absolute"
-              style={{
-                left: `${piece.x}%`,
-                top: -20,
-                width: piece.shape === 2 ? piece.size * 2.5 : piece.size,
-                height: piece.shape === 1 ? piece.size : piece.size * 0.6,
-                backgroundColor: piece.color,
-                borderRadius: piece.shape === 1 ? "50%" : piece.shape === 0 ? "2px" : "1px",
-              }}
-              initial={{ y: -20, opacity: 1, rotate: 0, scale: 1 }}
-              animate={{
-                y: ["-2vh", "110vh"],
-                opacity: [1, 1, 0.8, 0],
-                rotate: [0, piece.rotation],
-                x: [0, (Math.random() - 0.5) * 200],
-                scale: [1, 0.8],
-              }}
-              transition={{
-                duration: piece.duration + 1.5,
-                delay: piece.delay,
-                ease: [0.25, 0.46, 0.45, 0.94],
-              }}
-            />
-          ))}
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
+      </div>
+    );
+  }
+
+  if (showApproved) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1a0a6e 0%, #220E92 30%, #3318c7 60%, #1a0a6e 100%)" }}
+      >
+        {/* Confetti particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {Array.from({ length: 50 }).map((_, i) => {
+            const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"];
+            const color = colors[i % colors.length];
+            const left = `${Math.random() * 100}%`;
+            const delay = `${Math.random() * 3}s`;
+            const duration = `${3 + Math.random() * 4}s`;
+            const size = Math.random() > 0.5 ? "w-2 h-2" : "w-1.5 h-4";
+            const rotation = `${Math.random() * 360}deg`;
+            return (
+              <div
+                key={i}
+                className={`absolute ${size} rounded-sm opacity-80`}
+                style={{
+                  backgroundColor: color,
+                  left,
+                  top: "-20px",
+                  transform: `rotate(${rotation})`,
+                  animation: `confettiFall ${duration} ${delay} linear infinite`,
+                }}
+              />
+            );
+          })}
         </div>
 
-        {/* Animated background particles */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(20)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full bg-white/5"
-              style={{
-                width: Math.random() * 100 + 20,
-                height: Math.random() * 100 + 20,
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-              }}
-              animate={{
-                y: [0, -30, 0],
-                opacity: [0.05, 0.15, 0.05],
-                scale: [1, 1.1, 1],
-              }}
-              transition={{
-                duration: Math.random() * 4 + 3,
-                repeat: Infinity,
-                delay: Math.random() * 2,
-                ease: "easeInOut",
-              }}
-            />
-          ))}
-        </div>
+        <style>{`
+          @keyframes confettiFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+          }
+        `}</style>
 
-        <div className="relative z-10 flex flex-col items-center text-center px-6 max-w-lg mx-auto">
-          {/* Animated checkmark circle */}
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
-            className="w-28 h-28 md:w-32 md:h-32 rounded-full bg-[#FFC100] flex items-center justify-center mb-8 shadow-2xl shadow-[#FFC100]/30"
+        <div className="relative z-10 flex flex-col items-center text-center px-6">
+          {/* Yellow check circle */}
+          <div className="w-24 h-24 rounded-full bg-[#FFD700] flex items-center justify-center mb-8"
+            style={{ boxShadow: "0 0 40px rgba(255, 215, 0, 0.4)" }}
           >
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.6, type: "spring", stiffness: 300 }}
-            >
-              <CircleCheck className="w-14 h-14 md:w-16 md:h-16 text-[#220E92]" />
-            </motion.div>
-          </motion.div>
+            <CheckCircle2 className="w-12 h-12 text-[#1a0a6e]" />
+          </div>
 
-          {/* Welcome text */}
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-            className="text-3xl md:text-4xl lg:text-5xl text-white mb-4"
-            style={{ fontWeight: 700, letterSpacing: "-0.5px" }}
-          >
-            Welcome to <span className="text-[#FFC100]">Dashrobe</span>
-          </motion.h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+            Welcome to
+          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-[#FFD700] mb-10">
+            Dashrobe
+          </h1>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.1, duration: 0.5 }}
-            className="space-y-3 mb-10"
+          {/* <button
+            onClick={() => navigate("/vendor")}
+            className="px-8 py-3.5 rounded-lg text-base font-semibold transition-all hover:brightness-110"
+            style={{ backgroundColor: "#FFD700", color: "#1a0a6e" }}
           >
-            <p className="text-lg md:text-xl text-white/90">
-              Your application has been submitted successfully!
-            </p>
-            <p className="text-sm md:text-base text-white/60">
-              We will get back to you shortly. Our team will review your application and you'll hear from us within 2-3 business days.
-            </p>
-          </motion.div>
-
-          {/* Animated card */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.4, duration: 0.5 }}
-            className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 md:p-8 w-full border border-white/20 mb-8"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[#FFC100]/20 flex items-center justify-center">
-                <Info className="w-5 h-5 text-[#FFC100]" />
-              </div>
-              <h3 className="text-white font-semibold text-left">What happens next?</h3>
-            </div>
-            <ul className="space-y-3 text-left">
-              {[
-                "Our team reviews your documents & details",
-                "You'll receive an email confirmation shortly",
-                "Once approved, your vendor dashboard goes live",
-                "Start listing products and accepting orders!",
-              ].map((step, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.7 + i * 0.15, duration: 0.4 }}
-                  className="flex items-start gap-2.5 text-sm text-white/80"
-                >
-                  <span className="w-5 h-5 rounded-full bg-[#FFC100]/20 text-[#FFC100] flex items-center justify-center text-xs font-medium shrink-0 mt-0.5">
-                    {i + 1}
-                  </span>
-                  {step}
-                </motion.li>
-              ))}
-            </ul>
-          </motion.div>
-
-          {/* CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.3, duration: 0.5 }}
-          >
-            <Button
-              onClick={() => navigate("/vendor")}
-              className="px-8 md:px-10 py-5 md:py-6 text-sm md:text-base font-medium bg-[#FFC100] text-[#220E92] hover:bg-[#FFD040]"
-              style={{ borderRadius: "12px" }}
-            >
-              Go to Vendor Dashboard
-            </Button>
-          </motion.div>
+            Go to Vendor Dashboard
+          </button> */}
+          <p className="text-md text-white">Congratulations! Your application is approved. Our team will reach out to you shortly.</p>
         </div>
       </div>
     );
@@ -272,17 +375,108 @@ export function ReviewDeclaration() {
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <div>
+      <div ref={topRef}>
         <h2 className="text-2xl md:text-3xl font-semibold text-[#220E92] mb-2">Review & Declaration</h2>
-        <p className="text-sm md:text-base text-gray-600">Review your details and confirm your commitments to submit</p>
+        <p className="text-sm md:text-base text-gray-600">Review your details and accept the Terms and Conditions to submit</p>
       </div>
 
-      {/* Incomplete data notice */}
-      {(!hasBasicDetails || !hasBankDetails) && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50/30 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-          <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-800">
-            Some sections appear incomplete. Navigate back to fill in any missing details before submitting.
+      {/* Submit API error */}
+      {submitError && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{submitError}</p>
+        </div>
+      )}
+
+      {/* Submission status notice */}
+      {isSubmitted && (submissionStatus === "REJECTED" || submissionStatus === "SUSPENDED") ? (
+        <div
+          className="rounded-2xl p-4 flex items-start justify-between gap-3"
+          style={{ backgroundColor: "#FEF2F2", border: "1px solid #FECACA" }}
+        >
+          <div className="flex items-start gap-3">
+            <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-red-800">
+              <p>
+                Your request has been {submissionStatus === "REJECTED" ? "rejected" : "suspended"}. Please contact our customer support team for assistance.
+              </p>
+              <p className="mt-1 font-medium">
+                <a href="mailto:info@dashrobe.in" className="underline">info@dashrobe.in</a>
+                {" "}or{" "}
+                <a href="tel:+919999999999" className="underline">+91 9999 999 999</a>
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-red-700 hover:bg-red-100 transition-colors flex-shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+      ) : isSubmitted && submissionStatus === "APPROVED" ? (
+        <div
+          className="rounded-2xl p-4 flex items-start justify-between gap-3"
+          style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}
+        >
+          <div className="flex items-start gap-3">
+            <CircleCheck className="w-5 h-5 text-[#16A34A] flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-emerald-800">
+              <p className="text-[#16A34A]">
+                Congratulations! Your application has been approved. Welcome to Dashrobe!
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-emerald-700 hover:bg-emerald-100 transition-colors flex-shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+      ) : isSubmitted ? (
+        <div
+          className="rounded-2xl p-4 flex items-center justify-between gap-3"
+          style={{ backgroundColor: "#F0FDF4", border: "1px solid #86EFAC" }}
+        >
+          <div className="flex items-center gap-3">
+            <CircleCheck className="w-5 h-5 text-emerald-600 text-[#16A34A] flex-shrink-0" />
+            <p className="text-sm text-emerald-800 text-[#16A34A]">
+              Application submitted, We're reviewing your application and will reach out within 2 days.
+            </p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-[#16A34A] hover:bg-emerald-100 transition-colors flex-shrink-0"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+      ) : (
+        (!basicComplete || !bankComplete) && (
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50/30 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+            <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800">
+              Some sections appear incomplete. Navigate back to fill in any missing details before submitting.
+            </p>
+          </div>
+        )
+      )}
+
+      {/* Validation Error */}
+      {showError && !canSubmit && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">
+            {!basicComplete || !bankComplete
+              ? "Please complete Basic Details and Bank & Settlement sections before submitting."
+              : "Please accept the Terms and Conditions to submit your application."}
           </p>
         </div>
       )}
@@ -313,7 +507,7 @@ export function ReviewDeclaration() {
             <button
               type="button"
               onClick={() => setBasicExpanded(!basicExpanded)}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium lg:hidden"
             >
               {basicExpanded ? "Collapse" : "Expand"}
             </button>
@@ -402,7 +596,8 @@ export function ReviewDeclaration() {
             variant="ghost"
             size="sm"
             onClick={() => navigate("/onboarding")}
-            className="w-full justify-start text-[#220E92]"
+            disabled={isLocked}
+            className={`w-full justify-start text-[#220E92] ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Edit className="w-4 h-4 mr-2" />
             Edit Details
@@ -419,13 +614,11 @@ export function ReviewDeclaration() {
               <div>
                 <h4 className="font-semibold text-gray-900">Banking Info</h4>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  {bank.bankVerified ? (
+                  {hasBankDetails ? (
                     <>
                       <CircleCheck className="w-3.5 h-3.5 text-emerald-500" />
-                      <p className="text-xs text-emerald-600 font-medium">Verified</p>
+                      <p className="text-xs text-emerald-600 font-medium">Completed</p>
                     </>
-                  ) : hasBankDetails ? (
-                    <p className="text-xs text-amber-600 font-medium">Pending Verification</p>
                   ) : (
                     <p className="text-xs text-amber-600 font-medium">Incomplete</p>
                   )}
@@ -435,7 +628,7 @@ export function ReviewDeclaration() {
             <button
               type="button"
               onClick={() => setBankingExpanded(!bankingExpanded)}
-              className="text-xs text-gray-500 hover:text-gray-700 font-medium"
+              className="text-xs text-gray-500 hover:text-gray-700 font-medium lg:hidden"
             >
               {bankingExpanded ? "Collapse" : "Expand"}
             </button>
@@ -497,7 +690,8 @@ export function ReviewDeclaration() {
             variant="ghost"
             size="sm"
             onClick={() => navigate("/onboarding/banking")}
-            className="w-full justify-start text-[#220E92]"
+            disabled={isLocked}
+            className={`w-full justify-start text-[#220E92] ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <Edit className="w-4 h-4 mr-2" />
             Edit Banking
@@ -505,74 +699,69 @@ export function ReviewDeclaration() {
         </div>
       </div>
 
-      {/* Validation Error */}
-      {showError && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-          <CircleAlert className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-800">
-            Please accept all commitments and declarations below to submit your application.
-          </p>
-        </div>
-      )}
-
-      {/* Commitments, Declarations & SLA */}
+      {/* Terms and Conditions */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6 lg:p-8 space-y-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#220E92]" />
-            <h3 className="text-lg font-semibold text-gray-900">Commitments, Declarations & SLA</h3>
+        <div className="flex items-center gap-2">
+          <Shield className="w-5 h-5 text-[#220E92]" />
+          <h3 className="text-lg font-semibold text-gray-900">Commitments, Declarations & SLA</h3>
+        </div>
+
+        {isSubmitted ? (
+          <div className="flex items-start gap-3 rounded-lg">
+            <CircleCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <p className="text-md text-gray-800 leading-relaxed">
+              You have accepted this 
+            </p>
+            <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setTncOpen(true);
+                  }}
+                  className="text-[#220E92] font-medium underline hover:text-[#1a0a6e]"
+                >
+                  Terms and Conditions
+                </button>
+                <p>
+               and your application current status is{" "}
+              <span className="font-semibold text-[#220E92]">{submissionStatus || "SUBMITTED"}</span>.
+            </p>
           </div>
-          <span className="text-xs text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full font-medium">
-            {checkedCount}/{commitments.length} accepted
-          </span>
-        </div>
+        ) : (
+          <>
+            <p className="text-md text-[#4A5565]">Please review and accept the following mandatory items to proceed.</p>
 
-        <p className="text-sm text-gray-600">
-          Please review and accept all the following items. All are mandatory to proceed.
-        </p>
-
-        {/* Select All */}
-        <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
-          <Checkbox
-            id="select-all"
-            checked={allChecked}
-            onCheckedChange={toggleAll}
-          />
-          <label
-            htmlFor="select-all"
-            className="text-sm font-semibold text-[#220E92] cursor-pointer select-none"
-          >
-            Select All
-          </label>
-        </div>
-
-        {/* Individual checkboxes */}
-        <div className="space-y-3">
-          {commitments.map((item) => (
             <div
-              key={item.id}
-              className={`flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer ${
-                checkedItems[item.id] ? "bg-emerald-50/60" : "hover:bg-gray-50"
-              }`}
-              onClick={() => toggleItem(item.id)}
+              className={`flex items-center gap-3 rounded-lg transition-colors`}
             >
               <Checkbox
-                id={item.id}
-                checked={checkedItems[item.id] || false}
-                onCheckedChange={() => toggleItem(item.id)}
-                className="mt-0.5"
+                id="accept-terms"
+                checked={termsAccepted}
+                onCheckedChange={(v) => toggleTerms(!!v)}
+                className="w-5 h-5"
               />
               <label
-                htmlFor={item.id}
-                className={`text-sm leading-relaxed cursor-pointer select-none ${
-                  checkedItems[item.id] ? "text-gray-900" : "text-gray-700"
+                htmlFor="accept-terms"
+                className={`text-md leading-relaxed font-[400] cursor-pointer select-none ${
+                  termsAccepted ? "text-gray-900" : "text-gray-700"
                 }`}
               >
-                {item.label} <span className="text-red-500">*</span>
+                I have read and agree to the{" "}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setTncOpen(true);
+                  }}
+                  className="text-[#220E92] font-medium underline hover:text-[#1a0a6e]"
+                >
+                  Terms and Conditions
+                </button>
+                . <span className="text-red-500">*</span>
               </label>
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Navigation */}
@@ -580,22 +769,88 @@ export function ReviewDeclaration() {
         <Button
           onClick={handleBack}
           variant="outline"
+          disabled={isLocked}
           style={{ borderRadius: '10px' }}
-          className="w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium"
+          className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           Back
         </Button>
-        <Button
-          onClick={handleSubmit}
-          disabled={isSubmitting}
-          style={{ backgroundColor: allChecked ? '#220E92' : undefined, borderRadius: '10px' }}
-          className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${
-            !allChecked ? "bg-gray-300 text-gray-500 cursor-not-allowed" : ""
-          }`}
-        >
-          {isSubmitting ? "Submitting..." : "Submit Application"}
-        </Button>
+        {isSubmitted ? (
+          <Button
+            onClick={handleEdit}
+            disabled={isLocked || isEditing}
+            style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
+            className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${isLocked ? "opacity-50 cursor-not-allowed" : ""}`}
+          >
+            {isEditing ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enabling edit...
+              </>
+            ) : (
+              <>
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Application
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !canSubmit}
+            style={{ backgroundColor: canSubmit ? '#220E92' : undefined, borderRadius: '10px' }}
+            className={`w-full sm:w-auto px-6 md:px-8 py-5 md:py-6 text-sm md:text-base font-medium ${
+              !canSubmit ? "bg-gray-300 text-gray-500 cursor-not-allowed" : ""
+            }`}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              "Submit Application"
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Terms & Conditions Dialog */}
+      <Dialog open={tncOpen} onOpenChange={setTncOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex flex-row items-center">
+            <img src={containerIcon} alt="Container Icon" className="w-[40px] h-[40px]" />
+            <DialogTitle className="text-xl text-[#1A1A2E]">Terms & Conditions</DialogTitle>
+          </DialogHeader>
+
+          <div className="overflow-y-auto pr-2 space-y-4 text-sm text-gray-700 leading-relaxed">
+            <p className="font=[500] text-md text-[#364153]">All information provided in this application is accurate and up-to-date.</p>
+            <p className="font=[500] text-md text-[#364153]">I have the legal authority to represent and act on behalf of this business.</p>
+            <p className="font=[500] text-md text-[#364153]">All products listed comply with Indian laws, regulations, and quality standards.</p>
+            <p className="font=[500] text-md text-[#364153]">I accept Dashrobe's Vendor Terms & Conditions and Privacy Policy.</p>
+            <p className="font=[500] text-md text-[#364153]">I commit to maintaining product quality and accurate listings at all times.</p>
+            <p className="font=[500] text-md text-[#364153]">I authorize Dashrobe to verify all submitted documents and business credentials.</p>
+            <p className="font=[500] text-md text-[#364153]">I commit to accepting or rejecting orders within 5 minutes of receiving them.</p>
+            <p className="font=[500] text-md text-[#364153]">I commit to packing accepted orders within the preparation time specified during onboarding.</p>
+            <p className="font=[500] text-md text-[#364153]">I will keep inventory levels updated to avoid order cancellations due to stock-outs. </p>
+            <p className="font=[500] text-md text-[#364153]">I understand and accept the weekly settlement cycle (T+7 days from delivery).</p>
+            <p className="font=[500] text-md text-[#364153]">I acknowledge that Dashrobe handles all logistics and delivery operations.</p>
+            <p className="font=[500] text-md text-[#364153]">I agree to maintain responsive communication via the registered WhatsApp number.</p>
+          </div>
+
+          {!isSubmitted && <DialogFooter className="gap-2 pt-2">
+            <Button
+              onClick={() => {
+                toggleTerms(true);
+                setTncOpen(false);
+              }}
+              style={{ backgroundColor: "#220E92", borderRadius: "10px" }}
+            >
+              I Agree
+            </Button>
+          </DialogFooter>}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -617,7 +872,7 @@ function SummaryRow({
   return (
     <div className="flex items-start gap-2 text-sm">
       {icon && <span className="text-gray-400 mt-0.5 shrink-0">{icon}</span>}
-      <span className="text-gray-500 shrink-0 min-w-[90px]">{label}</span>
+      <span className={`text-gray-500 shrink-0 ${icon ? "w-[110px]" : "w-[130px]"}`}>{label}</span>
       <span className={`font-medium flex items-center gap-1.5 break-all ${isEmpty ? "text-gray-400 italic" : "text-gray-900"}`}>
         {value}
         {verified && (

@@ -1,14 +1,35 @@
 import { useNavigate } from "react-router";
-import { useState, useId } from "react";
+import { useState, useId, useEffect } from "react";
 import {
-  Store, Package, ShoppingCart, TrendingUp, TrendingDown,
-  ArrowUpRight, Clock, Eye, CircleCheck, CircleX,
+  Store,
+  Package,
+  ShoppingCart,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpRight,
+  Clock,
+  Eye,
+  CircleCheck,
+  CircleX,
 } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
 } from "recharts";
 import { Pagination, usePagination } from "../../components/Pagination";
+import { formatSubmittedAt } from "./AdminStores";
+import {
+  approveStore,
+  getAll,
+  rejectStore,
+} from "@/app/Service/VendorListActionService/vendorListActionService";
+import { StoreType } from "@/app/Service/VendorListActionService/Types/storeType";
 
 const revenueData = [
   { month: "Jul", revenue: 4200000 },
@@ -31,20 +52,27 @@ const vendorActivity = [
   { day: "Sun", orders: 445 },
 ];
 
-const pendingStores = [
-  { id: "vs-6", name: "Lucknow Chikan Studio", owner: "Fatima Khan", city: "Lucknow", category: "Kurtis", step: 8, complete: true, appliedAt: "2025-02-20" },
-  { id: "vs-7", name: "Mysore Silk Creations", owner: "Deepak Gowda", city: "Mysuru", category: "Sarees", step: 8, complete: true, appliedAt: "2025-02-22" },
-  { id: "vs-8", name: "Kolkata Handloom Co.", owner: "Ananya Das", city: "Kolkata", category: "Sarees", step: 8, complete: true, appliedAt: "2025-02-24" },
-  { id: "vs-9", name: "Hyderabad Pearl Fashions", owner: "Syed Ahmed", city: "Hyderabad", category: "Accessories", step: 8, complete: true, appliedAt: "2025-02-25" },
-  { id: "vs-12", name: "Banaras Zari Works", owner: "Mohammad Rafi", city: "Varanasi", category: "Sarees", step: 8, complete: true, appliedAt: "2025-02-26" },
-];
-
 const topStores = [
-  { name: "Kanchipuram Weaves", revenue: 5240000, orders: 2134, city: "Chennai" },
-  { name: "Priya Silks Emporium", revenue: 4850000, orders: 1842, city: "Varanasi" },
+  {
+    name: "Kanchipuram Weaves",
+    revenue: 5240000,
+    orders: 2134,
+    city: "Chennai",
+  },
+  {
+    name: "Priya Silks Emporium",
+    revenue: 4850000,
+    orders: 1842,
+    city: "Varanasi",
+  },
   { name: "Regal Ethnic Wear", revenue: 3720000, orders: 1256, city: "Jaipur" },
   { name: "Bombay Fashion Hub", revenue: 2890000, orders: 983, city: "Mumbai" },
-  { name: "Delhi Kurta House", revenue: 1950000, orders: 756, city: "New Delhi" },
+  {
+    name: "Delhi Kurta House",
+    revenue: 1950000,
+    orders: 756,
+    city: "New Delhi",
+  },
 ];
 
 const formatCurrency = (v: number) => {
@@ -60,27 +88,79 @@ export function AdminDashboard() {
   const chartId2 = useId();
   const gradientId = `revGrad-${chartId1.replace(/:/g, "")}`;
 
-  const [stores, setStores] = useState(pendingStores);
+  const [stores, setStores] = useState<StoreType[]>([]);
   const [showApproveModal, setShowApproveModal] = useState<string | null>(null);
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [approvedIds, setApprovedIds] = useState<Set<string>>(new Set());
   const [rejectedIds, setRejectedIds] = useState<Set<string>>(new Set());
   const [pendingPage, setPendingPage] = useState(1);
+  const [approveError, setApproveError] = useState<string>("");
+  const [rejectError, setRejectError] = useState("");
   const ROWS_PER_PAGE = 5;
 
-  const visibleStores = stores.filter(s => !approvedIds.has(s.id) && !rejectedIds.has(s.id));
-  const { paginated: paginatedStores, totalPages: totalPendingPages, safePage: safePendingPage } = usePagination(visibleStores, ROWS_PER_PAGE, pendingPage);
+  const {
+    paginated: paginatedStores,
+    totalPages: totalPendingPages,
+    safePage: safePendingPage,
+  } = usePagination(stores, ROWS_PER_PAGE, pendingPage);
 
-  const handleApprove = (id: string) => {
-    setApprovedIds(prev => new Set(prev).add(id));
-    setShowApproveModal(null);
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        const response = await getAll({ status: "SUBMITTED" });
+        setStores(response.data.stores);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    fetchStores();
+  }, [approvedIds, rejectedIds]);
+
+  const handleApprove = async (id: string) => {
+    try {
+      setApproveError("");
+      const response = await approveStore(id);
+      if (response?.status === 200) {
+        setApprovedIds((prev) => new Set(prev).add(id));
+        setShowApproveModal(null);
+      } else {
+        throw new Error(
+          response?.data?.message + response?.status ||
+            "Failed to approve store"
+        );
+      }
+    } catch (e) {
+      console.error("Error approving store:", e);
+      setApproveError(
+        e instanceof Error ? e.message.slice(0, 40) : "Unknown error"
+      );
+      return;
+    }
   };
 
-  const handleReject = (id: string) => {
-    setRejectedIds(prev => new Set(prev).add(id));
-    setShowRejectModal(null);
-    setRejectReason("");
+  const handleReject = async (id: string) => {
+    try {
+      setRejectError("");
+
+      const response = await rejectStore(id, rejectReason);
+
+      if (response?.status === 200) {
+        setRejectedIds((prev) => new Set(prev).add(id));
+        setShowRejectModal(null);
+        setRejectReason("");
+      } else {
+        throw new Error(
+          response?.data?.message + response?.status || "Failed to reject store"
+        );
+      }
+    } catch (e) {
+      console.error("Error rejecting store:", e);
+      setRejectError(
+        e instanceof Error ? e.message.slice(0, 40) : "Unknown error"
+      );
+    }
   };
 
   return (
@@ -88,131 +168,173 @@ export function AdminDashboard() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 style={{ fontSize: "22px", fontWeight: 700 }}>Admin Dashboard</h1>
-          <p className="text-muted-foreground mt-0.5" style={{ fontSize: "13px" }}>
+          <p
+            className="text-muted-foreground mt-0.5"
+            style={{ fontSize: "13px" }}
+          >
             Marketplace overview and key metrics
           </p>
         </div>
-        {visibleStores.filter(s => s.complete).length > 0 && (
+        {stores.length > 0 && (
           <button
             onClick={() => navigate("/admin/stores")}
             className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50/50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl hover:shadow-md transition-all"
             style={{ fontSize: "13px", fontWeight: 600 }}
           >
             <Clock className="w-4 h-4" />
-            {visibleStores.filter(s => s.complete).length} stores awaiting approval
+            {stores.length} stores awaiting approval
             <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
       {/* Pending Stores Section */}
-      {visibleStores.length > 0 && (
-      <div className="bg-card rounded-2xl border border-amber-200/80 shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-amber-50/80 to-orange-50/30 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-amber-600" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: "15px", fontWeight: 600 }}>Pending Store Applications</h3>
-              <p className="text-muted-foreground" style={{ fontSize: "12px" }}>{visibleStores.length} vendors waiting for review</p>
+      {stores.length > 0 && (
+        <div className="bg-card rounded-2xl border border-amber-200/80 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-amber-50/80 to-orange-50/30 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Clock className="w-4 h-4 text-amber-600" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: "15px", fontWeight: 600 }}>
+                  Pending Store Applications
+                </h3>
+                <p
+                  className="text-muted-foreground"
+                  style={{ fontSize: "12px" }}
+                >
+                  {stores.length} vendors waiting for review
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-muted/25">
-                {["Store Name", "Owner", "Location", "Applied", "Actions"].map((h) => (
-                  <th key={h} className="px-4 py-2.5 text-left text-muted-foreground whitespace-nowrap" style={{ fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedStores.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-b-0 hover:bg-muted/15 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-xl bg-[#220E92]/8 flex items-center justify-center shrink-0">
-                        <Store className="w-3.5 h-3.5 text-[#220E92]" />
-                      </div>
-                      <span style={{ fontSize: "13px", fontWeight: 600 }}>{s.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span style={{ fontSize: "13px" }}>{s.owner}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-muted-foreground" style={{ fontSize: "13px" }}>{s.city}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-muted-foreground" style={{ fontSize: "12px" }}>{s.appliedAt}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => s.complete && setShowApproveModal(s.id)}
-                        disabled={!s.complete}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border transition-colors ${
-                          s.complete
-                            ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-300"
-                            : "bg-muted/50 text-muted-foreground/50 border-border cursor-not-allowed"
-                        }`}
-                        style={{ fontSize: "12px", fontWeight: 600 }}
-                        title={s.complete ? "Approve" : "Onboarding incomplete"}
-                      >
-                        <CircleCheck className="w-3.5 h-3.5" />
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => setShowRejectModal(s.id)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors"
-                        style={{ fontSize: "12px", fontWeight: 600 }}
-                        title="Reject"
-                      >
-                        <CircleX className="w-3.5 h-3.5" />
-                        Reject
-                      </button>
-                      <button
-                        onClick={() => navigate("/admin/stores", { state: { storeId: s.id } })}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#220E92]/8 text-[#220E92] hover:bg-[#220E92]/15 border border-[#220E92]/20 transition-colors"
-                        style={{ fontSize: "12px", fontWeight: 600 }}
-                        title="View Details"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-muted/25">
+                  {[
+                    "Store Name",
+                    "Owner",
+                    "Location",
+                    "Applied",
+                    "Actions",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="px-4 py-2.5 text-left text-muted-foreground whitespace-nowrap"
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginatedStores.map((s) => (
+                  <tr
+                    key={s.vendorId}
+                    className="border-b border-border last:border-b-0 hover:bg-muted/15 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#220E92]/8 flex items-center justify-center shrink-0">
+                          <Store className="w-3.5 h-3.5 text-[#220E92]" />
+                        </div>
+                        <span style={{ fontSize: "13px", fontWeight: 600 }}>
+                          {s.storeName}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span style={{ fontSize: "13px" }}>{s.ownerName}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="text-muted-foreground"
+                        style={{ fontSize: "13px" }}
+                      >
+                        {s.location}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="text-muted-foreground"
+                        style={{ fontSize: "12px" }}
+                      >
+                        {formatSubmittedAt(s.submittedAt)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setShowApproveModal(s.vendorId)}
+                          disabled={s.status !== "SUBMITTED"}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border transition-colors ${
+                            s.status === "SUBMITTED"
+                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-300"
+                              : "bg-muted/50 text-muted-foreground/50 border-border cursor-not-allowed"
+                          }`}
+                          style={{ fontSize: "12px", fontWeight: 600 }}
+                          title={
+                            s.status ? "APPROVED" : "Onboarding incomplete"
+                          }
+                        >
+                          <CircleCheck className="w-3.5 h-3.5" />
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setShowRejectModal(s.vendorId)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors"
+                          style={{ fontSize: "12px", fontWeight: 600 }}
+                          title="Reject"
+                        >
+                          <CircleX className="w-3.5 h-3.5" />
+                          Reject
+                        </button>
+                        <button
+                          onClick={() =>navigate(`/admin/stores/${s.vendorId}`)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-[#220E92]/8 text-[#220E92] hover:bg-[#220E92]/15 border border-[#220E92]/20 transition-colors"
+                          style={{ fontSize: "12px", fontWeight: 600 }}
+                          title="View Details"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          View
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            currentPage={safePendingPage}
+            totalPages={totalPendingPages}
+            totalItems={stores.length}
+            itemsPerPage={ROWS_PER_PAGE}
+            onPageChange={setPendingPage}
+            itemLabel="stores"
+          />
+          <div className="px-5 py-2 flex items-center justify-end border-t border-border">
+            <button
+              onClick={() => navigate("/admin/stores")}
+              className="text-[#220E92] hover:underline flex items-center gap-1"
+              style={{ fontSize: "13px", fontWeight: 600 }}
+            >
+              View all <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-        <Pagination
-          currentPage={safePendingPage}
-          totalPages={totalPendingPages}
-          totalItems={visibleStores.length}
-          itemsPerPage={ROWS_PER_PAGE}
-          onPageChange={setPendingPage}
-          itemLabel="stores"
-        />
-        <div className="px-5 py-2 flex items-center justify-end border-t border-border">
-          <button
-            onClick={() => navigate("/admin/stores")}
-            className="text-[#220E92] hover:underline flex items-center gap-1"
-            style={{ fontSize: "13px", fontWeight: 600 }}
-          >
-            View all <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Vendors", value: "1,248", change: "+12%", up: true, icon: Store, color: "#220E92" },
           { label: "Active Products", value: "34,567", change: "+8%", up: true, icon: Package, color: "#3B82F6" },
@@ -236,10 +358,10 @@ export function AdminDashboard() {
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
           <h3 style={{ fontSize: "15px", fontWeight: 600 }} className="mb-4">Platform Revenue</h3>
           <svg width={0} height={0} style={{ position: "absolute" }}>
@@ -271,10 +393,10 @@ export function AdminDashboard() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div> */}
 
       {/* Top Stores */}
-      <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
+      {/* <div className="bg-card rounded-2xl border border-border shadow-sm p-5">
         <div className="flex items-center justify-between mb-5">
           <h3 style={{ fontSize: "15px", fontWeight: 600 }}>Top Revenue Stores</h3>
           <button onClick={() => navigate("/admin/stores")} className="text-[#220E92] hover:underline flex items-center gap-1" style={{ fontSize: "12px", fontWeight: 600 }}>
@@ -308,50 +430,114 @@ export function AdminDashboard() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Approve Modal */}
       {showApproveModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowApproveModal(null)}>
-          <div className="bg-card rounded-2xl p-6 w-full max-w-md shadow-2xl border border-border" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setShowApproveModal(null);
+            setApproveError("")
+          }}
+        >
+          <div
+            className="bg-card rounded-2xl p-6 w-full max-w-md shadow-2xl border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center">
                 <CircleCheck className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <h3 style={{ fontSize: "16px", fontWeight: 600 }}>Approve Store</h3>
-                <p className="text-muted-foreground" style={{ fontSize: "13px" }}>This will activate the vendor's store</p>
+                <h3 style={{ fontSize: "16px", fontWeight: 600 }}>
+                  Approve Store
+                </h3>
+                <p
+                  className="text-muted-foreground"
+                  style={{ fontSize: "13px" }}
+                >
+                  This will activate the vendor's store
+                </p>
               </div>
             </div>
             <p style={{ fontSize: "14px" }} className="mb-5">
-              Are you sure you want to approve <strong>{stores.find(s => s.id === showApproveModal)?.name}</strong>? The vendor will be able to list products and receive orders.
+              Are you sure you want to approve{" "}
+              <strong>
+                {stores.find((s) => s.vendorId === showApproveModal)?.storeName}
+              </strong>
+              ? The vendor will be able to list products and receive orders.
             </p>
             <div className="flex gap-3">
-              <button onClick={() => setShowApproveModal(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors" style={{ fontSize: "14px", fontWeight: 500 }}>Cancel</button>
-              <button onClick={() => handleApprove(showApproveModal)} className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm" style={{ fontSize: "14px", fontWeight: 500 }}>Approve</button>
+              <button
+                onClick={() => {
+                  setShowApproveModal(null);
+                  setApproveError("");
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors"
+                style={{ fontSize: "14px", fontWeight: 500 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleApprove(showApproveModal)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
+                style={{ fontSize: "14px", fontWeight: 500 }}
+              >
+                Approve
+              </button>
             </div>
+            {approveError && (
+              <p className="text-xs text-red-500">{approveError}</p>
+            )}
           </div>
         </div>
       )}
 
       {/* Reject Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setShowRejectModal(null); setRejectReason(""); }}>
-          <div className="bg-card rounded-2xl p-6 w-full max-w-md shadow-2xl border border-border" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setShowRejectModal(null);
+            setRejectReason("");
+            setRejectError("");
+          }}
+        >
+          <div
+            className="bg-card rounded-2xl p-6 w-full max-w-md shadow-2xl border border-border"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-11 h-11 rounded-xl bg-red-50 flex items-center justify-center">
                 <CircleX className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <h3 style={{ fontSize: "16px", fontWeight: 600 }}>Reject Store Application</h3>
-                <p className="text-muted-foreground" style={{ fontSize: "13px" }}>The vendor will be notified</p>
+                <h3 style={{ fontSize: "16px", fontWeight: 600 }}>
+                  Reject Store Application
+                </h3>
+                <p
+                  className="text-muted-foreground"
+                  style={{ fontSize: "13px" }}
+                >
+                  The vendor will be notified
+                </p>
               </div>
             </div>
             <p style={{ fontSize: "14px" }} className="mb-4">
-              Rejecting <strong>{stores.find(s => s.id === showRejectModal)?.name}</strong>'s application.
+              Rejecting{" "}
+              <strong>
+                {stores.find((s) => s.vendorId === showRejectModal)?.storeName}
+              </strong>
+              's application.
             </p>
             <div className="mb-5">
-              <label className="block text-muted-foreground mb-1.5" style={{ fontSize: "13px", fontWeight: 500 }}>Reason for rejection *</label>
+              <label
+                className="block text-muted-foreground mb-1.5"
+                style={{ fontSize: "13px", fontWeight: 500 }}
+              >
+                Reason for rejection *
+              </label>
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
@@ -363,9 +549,29 @@ export function AdminDashboard() {
               />
             </div>
             <div className="flex gap-3">
-              <button onClick={() => { setShowRejectModal(null); setRejectReason(""); }} className="flex-1 px-4 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors" style={{ fontSize: "14px", fontWeight: 500 }}>Cancel</button>
-              <button onClick={() => handleReject(showRejectModal)} disabled={!rejectReason.trim()} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm" style={{ fontSize: "14px", fontWeight: 500 }}>Reject</button>
+              <button
+                onClick={() => {
+                  setShowRejectModal(null);
+                  setRejectReason("");
+                  setRejectError("");
+                }}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-border hover:bg-muted transition-colors"
+                style={{ fontSize: "14px", fontWeight: 500 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleReject(showRejectModal)}
+                disabled={!rejectReason.trim()}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 shadow-sm"
+                style={{ fontSize: "14px", fontWeight: 500 }}
+              >
+                Reject
+              </button>
             </div>
+            {rejectError && (
+              <p className="text-xs text-red-500">{rejectError}</p>
+            )}
           </div>
         </div>
       )}
