@@ -399,16 +399,16 @@ export function AdminStoreDetail() {
         <div className="flex items-center justify-between mb-2">
           <span style={{ fontSize: "14px", fontWeight: 600 }}>Onboarding Progress</span>
           <span style={{ fontSize: "12px", fontWeight: 600, color: vd.currentStep >= 8 ? "#059669" : "#D97706" }}>
-            {vd.currentStep >= 7 ? "All 7 steps complete" : `Step ${vd.currentStep} of 7`}
+            {vd.status != "DRAFT" || vd.currentStep - 1 >= 7 ? "All 7 steps complete" : `Step ${vd.currentStep - 1} of 7`}
           </span>
         </div>
         <div className="w-full h-2.5 bg-white rounded-full overflow-hidden border border-border">
-          <div className="h-full rounded-full transition-all" style={{ width: `${(vd.currentStep / 7) * 100}%`, backgroundColor: vd.currentStep >= 7 ? "#059669" : "#D97706" }} />
+          <div className="h-full rounded-full transition-all" style={{ width: `${vd.status != "DRAFT" ? "100%" : ((vd.currentStep - 1) / 7) * 100}%`, backgroundColor: vd.status != "DRAFT" || vd.currentStep - 1 >= 7 ? "#059669" : "#D97706" }} />
         </div>
         <div className="flex flex-wrap gap-1.5 mt-3">
           {["Basic Details", "Operations", "Categories", "Banking", "Returns", "Offers", "Review"].map((step, i) => (
-            <span key={step} className="px-2.5 py-1 rounded-lg" style={{ fontSize: "11px", fontWeight: 600, backgroundColor: i < vd.currentStep ? "#D1FAE5" : "#F3F4F6", color: i < vd.currentStep ? "#059669" : "#9CA3AF" }}>
-              {i < vd.currentStep ? "✓ " : ""}{step}
+            <span key={step} className="px-2.5 py-1 rounded-lg" style={{ fontSize: "11px", fontWeight: 600, backgroundColor: vd.status != "DRAFT" || i < vd.currentStep - 1 ? "#D1FAE5" : "#F3F4F6", color: vd.status != "DRAFT" || i < vd.currentStep - 1 ? "#059669" : "#9CA3AF" }}>
+              {vd.status != "DRAFT" || i < vd.currentStep - 1 ? "✓ " : ""}{step}
             </span>
           ))}
         </div>
@@ -639,7 +639,7 @@ export function AdminStoreDetail() {
             </div>
             <div className="p-5">
               <DField label="Contact Number" value={vd.refundPolicy.refundContactNumber} />
-              <DField label="Contact Email" value={vd.refundPolicy.refundContactEmail} />
+              {/* <DField label="Contact Email" value={vd.refundPolicy.refundContactEmail} /> */}
             </div>
           </div>
         )}
@@ -679,7 +679,7 @@ export function AdminStoreDetail() {
             <div>
               <p style={{ fontSize: "14px", fontWeight: 600, color: "#92400E" }}>Onboarding Incomplete</p>
               <p style={{ fontSize: "13px", color: "#92400E" }} className="mt-0.5">
-                This vendor has completed {vd.currentStep} of 7 onboarding steps. Steps {vd.currentStep + 1}–7 have not been filled yet. The store cannot be approved until all steps are complete.
+                This vendor has completed {vd.currentStep} of 7 onboarding steps. Steps {vd.currentStep}–7 have not been filled yet. The store cannot be approved until all steps are complete.
               </p>
             </div>
           </div>

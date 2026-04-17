@@ -224,9 +224,6 @@ export function ProductCategories() {
               <Check className="w-3 h-3 text-white" />
             </div>
           )}
-          <div className={`mb-2 ${isSelected ? "text-[#220E92]" : "text-gray-400"}`}>
-            <Shirt className="w-5 h-5" />
-          </div>
           <span className={`text-xs md:text-sm font-medium leading-tight ${isSelected ? "text-[#220E92]" : "text-gray-700"}`}>
             {category.name}
           </span>
@@ -247,9 +244,6 @@ export function ProductCategories() {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#220E92]/10 flex items-center justify-center text-[#220E92]">
-                  <Shirt className="w-4 h-4" />
-                </div>
                 <div>
                   <span className="text-sm font-semibold text-[#220E92]">{category.name}</span>
                   <span className="text-xs text-gray-500 ml-2">— choose sub-categories</span>

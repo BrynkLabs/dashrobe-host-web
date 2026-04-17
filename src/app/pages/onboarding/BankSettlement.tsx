@@ -5,7 +5,7 @@ import { Label } from "../../components/ui/label";
 import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2, Upload, AlertCircle } from "lucide-react";
+import { CircleAlert, Building2, FileText, CircleCheck, AlertTriangle, Loader2, Upload, AlertCircle, Eye, X, FileCheck } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
@@ -50,6 +50,10 @@ export function BankSettlement() {
   const [businessPanUploading, setBusinessPanUploading] = useState(false);
   const [ownerPanUploading, setOwnerPanUploading] = useState(false);
   const [bankProofUploading, setBankProofUploading] = useState(false);
+
+  // Document preview states
+  const [previewDoc, setPreviewDoc] = useState<{ name: string; url: string; fileType: string } | null>(null);
+  const [docPreviewLoading, setDocPreviewLoading] = useState(false);
 
   // Fetch existing bank settlement details on mount
   useEffect(() => {
@@ -184,6 +188,27 @@ export function BankSettlement() {
     const file = e.target.files?.[0];
     if (file) {
       uploadDocument(file, documentType, setUploading, setS3Key, setUploaded);
+    }
+  };
+
+  const handleViewDocument = async (s3Key: string, name: string) => {
+    try {
+      setDocPreviewLoading(true);
+      const token = getCookie("token");
+      const response = await axiosClient.get(`/api/v1/onboarding/documents/download`, {
+        params: { s3_key: s3Key },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.status === 200 && response.data?.success) {
+        const url = response.data.data;
+        const ext = s3Key.split(".").pop()?.toLowerCase() || "";
+        const fileType = ["png", "jpg", "jpeg", "gif", "webp"].includes(ext) ? "image" : ext === "pdf" ? "pdf" : "image";
+        setPreviewDoc({ name, url, fileType });
+      }
+    } catch (error) {
+      console.error("Error previewing document:", error);
+    } finally {
+      setDocPreviewLoading(false);
     }
   };
 
@@ -392,61 +417,85 @@ export function BankSettlement() {
         {/* GST Certificate */}
         <div className="space-y-2">
           <p className="text-sm font-medium text-gray-900">GST Certificate</p>
-          <label
-            htmlFor="gstCertificate"
-            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${gstUploading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            {gstUploading ? (
-              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
-            ) : bank.gstCertificateUploaded ? (
-              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
-            ) : (
-              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="gstCertificate"
+              className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${gstUploading ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {gstUploading ? (
+                <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+              ) : bank.gstCertificateUploaded ? (
+                <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+              ) : (
+                <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+              )}
+              <span className="text-sm text-gray-400">{bank.gstCertificateUploaded ? "Uploaded" : "Upload"}</span>
+              <input
+                id="gstCertificate"
+                type="file"
+                accept=".pdf, .jpg, .jpeg, .png"
+                className="hidden"
+                onChange={(e) =>
+                  handleFileChange(e, "GST_CERTIFICATE", setGstUploading, setDocGstS3Key, (field) =>
+                    updateBankSettlement(field as any)
+                  )
+                }
+                disabled={gstUploading}
+              />
+            </label>
+            {bank.gstCertificateUploaded && docGstS3Key && (
+              <button
+                onClick={() => handleViewDocument(docGstS3Key, "GST Certificate")}
+                disabled={docPreviewLoading}
+                className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-[#220E92]/10 transition-colors shrink-0"
+                title="View GST Certificate"
+              >
+                <Eye className="w-4 h-4 text-[#220E92]" />
+              </button>
             )}
-            <span className="text-sm text-gray-400">{bank.gstCertificateUploaded ? "Uploaded" : "Upload"}</span>
-            <input
-              id="gstCertificate"
-              type="file"
-              accept=".pdf, .jpg, .jpeg, .png"
-              className="hidden"
-              onChange={(e) =>
-                handleFileChange(e, "GST_CERTIFICATE", setGstUploading, setDocGstS3Key, (field) =>
-                  updateBankSettlement(field as any)
-                )
-              }
-              disabled={gstUploading}
-            />
-          </label>
+          </div>
         </div>
 
         {/* Business PAN Card */}
         <div className="space-y-2">
           <p className="text-sm font-medium text-gray-900">Business PAN Card</p>
-          <label
-            htmlFor="businessPAN"
-            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${businessPanUploading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            {businessPanUploading ? (
-              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
-            ) : bank.businessPANUploaded ? (
-              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
-            ) : (
-              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="businessPAN"
+              className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${businessPanUploading ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {businessPanUploading ? (
+                <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+              ) : bank.businessPANUploaded ? (
+                <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+              ) : (
+                <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+              )}
+              <span className="text-sm text-gray-400">{bank.businessPANUploaded ? "Uploaded" : "Upload"}</span>
+              <input
+                id="businessPAN"
+                type="file"
+                accept=".pdf, .jpg, .jpeg, .png"
+                className="hidden"
+                onChange={(e) =>
+                  handleFileChange(e, "BUSINESS_PAN", setBusinessPanUploading, setDocBusinessPanS3Key, (field) =>
+                    updateBankSettlement(field as any)
+                  )
+                }
+                disabled={businessPanUploading}
+              />
+            </label>
+            {bank.businessPANUploaded && docBusinessPanS3Key && (
+              <button
+                onClick={() => handleViewDocument(docBusinessPanS3Key, "Business PAN Card")}
+                disabled={docPreviewLoading}
+                className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-[#220E92]/10 transition-colors shrink-0"
+                title="View Business PAN Card"
+              >
+                <Eye className="w-4 h-4 text-[#220E92]" />
+              </button>
             )}
-            <span className="text-sm text-gray-400">{bank.businessPANUploaded ? "Uploaded" : "Upload"}</span>
-            <input
-              id="businessPAN"
-              type="file"
-              accept=".pdf, .jpg, .jpeg, .png"
-              className="hidden"
-              onChange={(e) =>
-                handleFileChange(e, "BUSINESS_PAN", setBusinessPanUploading, setDocBusinessPanS3Key, (field) =>
-                  updateBankSettlement(field as any)
-                )
-              }
-              disabled={businessPanUploading}
-            />
-          </label>
+          </div>
         </div>
 
         {/* Owner PAN Card - Mandatory */}
@@ -455,31 +504,43 @@ export function BankSettlement() {
             Owner PAN Card <span className="text-red-500">*</span>
             <span className="text-xs text-red-500 bg-[#FEF2F2] p-1 rounded font-medium">Mandatory</span>
           </p>
-          <label
-            htmlFor="ownerPAN"
-            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${ownerPanUploading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            {ownerPanUploading ? (
-              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
-            ) : bank.ownerPANUploaded ? (
-              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
-            ) : (
-              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="ownerPAN"
+              className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${ownerPanUploading ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {ownerPanUploading ? (
+                <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+              ) : bank.ownerPANUploaded ? (
+                <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+              ) : (
+                <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+              )}
+              <span className="text-sm text-gray-400">{bank.ownerPANUploaded ? "Uploaded" : "Upload"}</span>
+              <input
+                id="ownerPAN"
+                type="file"
+                accept=".pdf, .jpg, .jpeg, .png"
+                className="hidden"
+                onChange={(e) =>
+                  handleFileChange(e, "OWNER_PAN", setOwnerPanUploading, setDocOwnerPanS3Key, (field) =>
+                    updateBankSettlement(field as any)
+                  )
+                }
+                disabled={ownerPanUploading}
+              />
+            </label>
+            {bank.ownerPANUploaded && docOwnerPanS3Key && (
+              <button
+                onClick={() => handleViewDocument(docOwnerPanS3Key, "Owner PAN Card")}
+                disabled={docPreviewLoading}
+                className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-[#220E92]/10 transition-colors shrink-0"
+                title="View Owner PAN Card"
+              >
+                <Eye className="w-4 h-4 text-[#220E92]" />
+              </button>
             )}
-            <span className="text-sm text-gray-400">{bank.ownerPANUploaded ? "Uploaded" : "Upload"}</span>
-            <input
-              id="ownerPAN"
-              type="file"
-              accept=".pdf, .jpg, .jpeg, .png"
-              className="hidden"
-              onChange={(e) =>
-                handleFileChange(e, "OWNER_PAN", setOwnerPanUploading, setDocOwnerPanS3Key, (field) =>
-                  updateBankSettlement(field as any)
-                )
-              }
-              disabled={ownerPanUploading}
-            />
-          </label>
+          </div>
         </div>
 
         {/* Bank Proof Document */}
@@ -488,31 +549,43 @@ export function BankSettlement() {
             <p className="text-sm font-medium text-gray-900">Bank Proof Document</p>
             <p className="text-xs text-gray-500">Cancelled cheque or bank passbook</p>
           </div>
-          <label
-            htmlFor="bankProof"
-            className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${bankProofUploading ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            {bankProofUploading ? (
-              <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
-            ) : bank.bankProofUploaded ? (
-              <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
-            ) : (
-              <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+          <div className="flex items-center gap-2">
+            <label
+              htmlFor="bankProof"
+              className={`flex items-center gap-2.5 w-full px-4 py-3 rounded-xl border border-gray-200 bg-white cursor-pointer hover:border-gray-300 transition-colors ${bankProofUploading ? "opacity-60 pointer-events-none" : ""}`}
+            >
+              {bankProofUploading ? (
+                <Loader2 className="w-4.5 h-4.5 animate-spin text-[#220E92] shrink-0" />
+              ) : bank.bankProofUploaded ? (
+                <CircleCheck className="w-4.5 h-4.5 text-green-500 shrink-0" />
+              ) : (
+                <Upload className="w-4.5 h-4.5 text-gray-400 shrink-0" />
+              )}
+              <span className="text-sm text-gray-400">{bank.bankProofUploaded ? "Uploaded" : "Upload"}</span>
+              <input
+                id="bankProof"
+                type="file"
+                accept=".pdf, .jpg, .jpeg, .png"
+                className="hidden"
+                onChange={(e) =>
+                  handleFileChange(e, "BANK_PROOF", setBankProofUploading, setDocBankProofS3Key, (field) =>
+                    updateBankSettlement(field as any)
+                  )
+                }
+                disabled={bankProofUploading}
+              />
+            </label>
+            {bank.bankProofUploaded && docBankProofS3Key && (
+              <button
+                onClick={() => handleViewDocument(docBankProofS3Key, "Bank Proof Document")}
+                disabled={docPreviewLoading}
+                className="w-10 h-10 rounded-xl flex items-center justify-center border border-gray-200 hover:bg-[#220E92]/10 transition-colors shrink-0"
+                title="View Bank Proof Document"
+              >
+                <Eye className="w-4 h-4 text-[#220E92]" />
+              </button>
             )}
-            <span className="text-sm text-gray-400">{bank.bankProofUploaded ? "Uploaded" : "Upload"}</span>
-            <input
-              id="bankProof"
-              type="file"
-              accept=".pdf, .jpg, .jpeg, .png"
-              className="hidden"
-              onChange={(e) =>
-                handleFileChange(e, "BANK_PROOF", setBankProofUploading, setDocBankProofS3Key, (field) =>
-                  updateBankSettlement(field as any)
-                )
-              }
-              disabled={bankProofUploading}
-            />
-          </label>
+          </div>
         </div>
       </div>
 
@@ -543,6 +616,52 @@ export function BankSettlement() {
           )}
         </Button>
       </div>
+
+      {/* Document Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setPreviewDoc(null)}>
+          <div className="bg-card rounded-[12px] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-[10px] bg-[#220E92]/8 flex items-center justify-center shrink-0">
+                  <FileCheck className="w-5 h-5 text-[#220E92]" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="truncate" style={{ fontSize: "16px", fontWeight: 600 }}>{previewDoc.name}</h3>
+                  <p className="text-muted-foreground" style={{ fontSize: "12px" }}>{previewDoc.fileType} Document</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted transition-colors"
+                >
+                  <X className="w-4.5 h-4.5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-auto p-6 bg-muted/20">
+              {previewDoc.fileType === "pdf" ? (
+                <iframe
+                  src={previewDoc.url}
+                  className="w-full rounded-[12px] border border-border"
+                  style={{ minHeight: "500px" }}
+                  title={previewDoc.name}
+                />
+              ) : (
+                <div className="flex items-center justify-center">
+                  <img
+                    src={previewDoc.url}
+                    alt={previewDoc.name}
+                    className="max-w-full max-h-[70vh] rounded-[12px] border border-border shadow-sm object-contain"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

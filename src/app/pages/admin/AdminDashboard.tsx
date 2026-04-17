@@ -30,6 +30,7 @@ import {
   rejectStore,
 } from "@/app/Service/VendorListActionService/vendorListActionService";
 import { StoreType } from "@/app/Service/VendorListActionService/Types/storeType";
+import approvalIcon from "@/assets/approved-icon.png";
 
 const revenueData = [
   { month: "Jul", revenue: 4200000 },
@@ -189,7 +190,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Pending Stores Section */}
-      {stores.length > 0 && (
+      {stores.length > 0 ? (
         <div className="bg-card rounded-2xl border border-amber-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border bg-gradient-to-r from-amber-50/80 to-orange-50/30 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -330,6 +331,14 @@ export function AdminDashboard() {
               View all <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+      ) : (
+        <div className="bg-card rounded-2xl border border-border shadow-sm p-8 text-center w-full md:w-[50%] ml-auto mr-auto mt-[15%] flex flex-col items-center gap-2">
+          <img src={approvalIcon} alt="approved" className="w-[100px] h-[100px]" />
+          <p style={{ fontSize: "24px", fontWeight: 700 }} className="mb-2 w-[90%]">🎉 All Stores Successfully Approved</p>
+          <p className="text-muted-foreground w-[90%]" style={{ fontSize: "14px" }}>
+            Every store on the platform has been reviewed and approved. Sellers can now list products and accept orders.
+          </p>
         </div>
       )}
 

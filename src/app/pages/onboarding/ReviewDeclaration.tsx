@@ -12,7 +12,7 @@ import {
 } from "../../components/ui/dialog";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { formatAddress } from "../../components/onboarding/AddressFields";
-import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
+import { FileText, DollarSign, Shield, Edit, CircleAlert, Building2, Phone, Mail, MapPin, CreditCard, CircleCheck, Landmark, Info, Loader2, RefreshCw } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie, removeCookie } from "@/app/utils/cookieUtils";
 import { logoutUser } from "@/app/Service/AuthService/authService";
@@ -65,7 +65,6 @@ export function ReviewDeclaration() {
   const [bankingExpanded, setBankingExpanded] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [showApproved, setShowApproved] = useState(false);
 
   const isLocked = submissionStatus === "APPROVED" || submissionStatus === "SUSPENDED";
 
@@ -97,12 +96,6 @@ export function ReviewDeclaration() {
         if (d.status === "SUBMITTED" || d.status === "REJECTED" || d.status === "SUSPENDED" || d.status === "APPROVED") {
           setIsSubmitted(true);
           setTermsAccepted(true);
-        }
-        if (d.status === "APPROVED") {
-          setShowApproved(true);
-        }
-        if (d.status === "SUSPENDED") {
-          handleLogout();
         }
       }
     } catch (error) {
@@ -303,72 +296,6 @@ export function ReviewDeclaration() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-[#220E92]" />
-      </div>
-    );
-  }
-
-  if (showApproved) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #1a0a6e 0%, #220E92 30%, #3318c7 60%, #1a0a6e 100%)" }}
-      >
-        {/* Confetti particles */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          {Array.from({ length: 50 }).map((_, i) => {
-            const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"];
-            const color = colors[i % colors.length];
-            const left = `${Math.random() * 100}%`;
-            const delay = `${Math.random() * 3}s`;
-            const duration = `${3 + Math.random() * 4}s`;
-            const size = Math.random() > 0.5 ? "w-2 h-2" : "w-1.5 h-4";
-            const rotation = `${Math.random() * 360}deg`;
-            return (
-              <div
-                key={i}
-                className={`absolute ${size} rounded-sm opacity-80`}
-                style={{
-                  backgroundColor: color,
-                  left,
-                  top: "-20px",
-                  transform: `rotate(${rotation})`,
-                  animation: `confettiFall ${duration} ${delay} linear infinite`,
-                }}
-              />
-            );
-          })}
-        </div>
-
-        <style>{`
-          @keyframes confettiFall {
-            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-          }
-        `}</style>
-
-        <div className="relative z-10 flex flex-col items-center text-center px-6">
-          {/* Yellow check circle */}
-          <div className="w-24 h-24 rounded-full bg-[#FFD700] flex items-center justify-center mb-8"
-            style={{ boxShadow: "0 0 40px rgba(255, 215, 0, 0.4)" }}
-          >
-            <CheckCircle2 className="w-12 h-12 text-[#1a0a6e]" />
-          </div>
-
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
-            Welcome to
-          </h1>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#FFD700] mb-10">
-            Dashrobe
-          </h1>
-
-          {/* <button
-            onClick={() => navigate("/vendor")}
-            className="px-8 py-3.5 rounded-lg text-base font-semibold transition-all hover:brightness-110"
-            style={{ backgroundColor: "#FFD700", color: "#1a0a6e" }}
-          >
-            Go to Vendor Dashboard
-          </button> */}
-          <p className="text-md text-white">Congratulations! Your application is approved. Our team will reach out to you shortly.</p>
-        </div>
       </div>
     );
   }
