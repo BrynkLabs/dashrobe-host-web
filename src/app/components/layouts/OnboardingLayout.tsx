@@ -1,10 +1,11 @@
 import { Outlet, useLocation, useNavigate } from "react-router";
-import { Check, Menu, X, HelpCircle, Lock, LogOut } from "lucide-react";
+import { Check, Menu, X, HelpCircle, Lock, LogOut, CheckCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { OnboardingProvider } from "../onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie, removeCookie } from "@/app/utils/cookieUtils";
 import { logoutUser } from "@/app/Service/AuthService/authService";
+import suspendImage from "@/assets/suspend-icon.png";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -35,6 +36,8 @@ export function OnboardingLayout() {
   const [hasRedirected, setHasRedirected] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showApproved, setShowApproved] = useState(false);
+  const [showSuspended, setShowSuspended] = useState(false);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -72,7 +75,8 @@ export function OnboardingLayout() {
         const res = await axiosClient.get(`/api/v1/onboarding/status`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const completion = res.data?.data?.stepCompletion;
+        const d = res.data?.data;
+        const completion = d?.stepCompletion;
         if (completion && typeof completion === "object") {
           setStepCompletion(completion);
 
@@ -86,6 +90,16 @@ export function OnboardingLayout() {
               navigate(firstIncompleteStep.path, { replace: true });
             }
           }
+        }
+
+        // Show global approved/suspended screens
+        if (d?.status === "APPROVED") {
+          setShowApproved(true);
+        } else if (d?.status === "SUSPENDED") {
+          setShowSuspended(true);
+        } else {
+          setShowApproved(false);
+          setShowSuspended(false);
         }
       } catch (e) {
         console.error("Failed to fetch onboarding status:", e);
@@ -103,6 +117,82 @@ export function OnboardingLayout() {
     }
     return true;
   };
+
+  if (showApproved) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1a0a6e 0%, #220E92 30%, #3318c7 60%, #1a0a6e 100%)" }}
+      >
+        {/* Confetti particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {Array.from({ length: 50 }).map((_, i) => {
+            const colors = ["#FFD700", "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE"];
+            const color = colors[i % colors.length];
+            const left = `${Math.random() * 100}%`;
+            const delay = `${Math.random() * 3}s`;
+            const duration = `${3 + Math.random() * 4}s`;
+            const size = Math.random() > 0.5 ? "w-2 h-2" : "w-1.5 h-4";
+            const rotation = `${Math.random() * 360}deg`;
+            return (
+              <div
+                key={i}
+                className={`absolute ${size} rounded-sm opacity-80`}
+                style={{
+                  backgroundColor: color,
+                  left,
+                  top: "-20px",
+                  transform: `rotate(${rotation})`,
+                  animation: `confettiFall ${duration} ${delay} linear infinite`,
+                }}
+              />
+            );
+          })}
+        </div>
+
+        <style>{`
+          @keyframes confettiFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+          }
+        `}</style>
+
+        <div className="relative z-10 flex flex-col items-center text-center px-6">
+          <div className="w-24 h-24 rounded-full bg-[#FFD700] flex items-center justify-center mb-8"
+            style={{ boxShadow: "0 0 40px rgba(255, 215, 0, 0.4)" }}
+          >
+            <CheckCircle2 className="w-12 h-12 text-[#1a0a6e]" />
+          </div>
+
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
+            Welcome to
+          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-[#FFD700] mb-10">
+            Dashrobe
+          </h1>
+          <p className="text-md text-white">Congratulations! Your application is approved. Our team will reach out to you shortly.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSuspended) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+        style={{ background: "linear-gradient(135deg, #1a0a6e 0%, #220E92 30%, #3318c7 60%, #1a0a6e 100%)" }}
+      >
+        <div className="relative z-10 flex flex-col items-center text-center px-6">
+          <img src={suspendImage} alt="suspend" className="w-[128px] h-[128px] text-[#1a0a6e]" />
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            Account Suspended
+          </h1>
+          <p className="text-sm text-white md:w-[500px]">Your account has been suspended. For further information or assistance, please reach out to our customer support team. We're here to help.</p>
+          <a href="tel:+919999999999" className="bg-[#FFC100] text-[#220E92] font-[700] px-4 py-2 mt-5 rounded-md inline-block">
+            Contact : +91 9999 999 999
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <OnboardingProvider>
