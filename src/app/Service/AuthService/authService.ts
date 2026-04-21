@@ -36,9 +36,18 @@ export const verifyOtp = async (
 
 export type LoginRole = "superadmin" | "vendor";
 
-export const loginUser = async (phone: string, role: LoginRole) => {
+export const isValidAdmin = async (phoneNumber: string) => {
+  const res = await axiosClient.post(
+    `${BACKEND}/v1/auth/superadmin/isValidAdmin`,
+    { phoneNumber }
+  );
+  return res.data;
+};
+
+export const loginUser = async (req: any, role: LoginRole) => {
   const res = await axiosClient.post(`${BACKEND}/v1/auth/${role}/login`, {
-    phoneNumber: phone,
+    phoneNumber: req.phoneNumber,
+    otpToken: req.otpToken,
   });
 
   return res.data.data;
