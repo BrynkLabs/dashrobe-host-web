@@ -307,7 +307,6 @@ export function AdminLayout() {
             </button>
             <div className="hidden sm:block relative" ref={logoutMenuRef}>
               <button
-                onClick={() => setShowLogoutMenu((prev) => !prev)}
                 className="flex items-center gap-2.5 pl-2.5 ml-0.5 border-l border-border cursor-pointer hover:opacity-80 transition-opacity"
               >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#0F0538] to-[#1a0a6e] flex items-center justify-center shadow-sm">

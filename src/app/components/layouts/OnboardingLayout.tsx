@@ -166,10 +166,11 @@ export function OnboardingLayout() {
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">
             Welcome to
           </h1>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#FFD700] mb-10">
+          <h1 className="text-4xl md:text-5xl font-bold text-[#FFD700] mb-5">
             Dashrobe
           </h1>
           <p className="text-md text-white">Congratulations! Your application is approved. Our team will reach out to you shortly.</p>
+          <button onClick={handleLogout} className="bg-[#FFC100] rounded py-2 px-4 mt-5 text-[#220E92]">Logout</button>
         </div>
       </div>
     );
@@ -189,6 +190,7 @@ export function OnboardingLayout() {
           <a href="tel:+919999999999" className="bg-[#FFC100] text-[#220E92] font-[700] px-4 py-2 mt-5 rounded-md inline-block">
             Contact : +91 9999 999 999
           </a>
+          <button onClick={handleLogout} className="bg-[#FFC100] rounded py-2 px-4 mt-5 text-[#220E92]">Logout</button>
         </div>
       </div>
     );
