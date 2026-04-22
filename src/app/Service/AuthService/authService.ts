@@ -1,6 +1,5 @@
 import axios from "axios";
 import { axiosClient } from "../AxiosClient/axiosClient";
-
 const OTP_BASE = import.meta.env.VITE_OTP_API_BASE_URL;
 const BACKEND = import.meta.env.VITE_API_BASE_URL;
 
@@ -36,11 +35,33 @@ export const verifyOtp = async (
 
 export type LoginRole = "superadmin" | "vendor";
 
-export const loginUser = async (phone: string, role: LoginRole) => {
+export const isValidAdmin = async (phoneNumber: string) => {
+  const res = await axiosClient.post(
+    `${BACKEND}/v1/auth/superadmin/isValidAdmin`,
+    { phoneNumber }
+  );
+  return res.data;
+};
+
+export const loginUser = async (req: any, role: LoginRole) => {
   const res = await axiosClient.post(`${BACKEND}/v1/auth/${role}/login`, {
-    phoneNumber: phone,
+    phoneNumber: req.phoneNumber,
+    otpToken: req.otpToken,
   });
 
+  return res.data.data;
+};
+
+export const refreshToken = async (refreshTokenValue: string) => {
+  const res = await axios.post(
+    `${BACKEND}/v1/auth/refresh-token`,
+    { refreshToken: refreshTokenValue },
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
   return res.data.data;
 };
 
