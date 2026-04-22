@@ -71,6 +71,9 @@ export default function LoginPage() {
 
       setCookie("token", loginData.token, 1);
       localStorage.setItem("userId", loginData.userId);
+      if (loginData.refreshToken) {
+        localStorage.setItem("refreshToken", loginData.refreshToken);
+      }
 
       navigate("/admin");
     } catch (e) {
