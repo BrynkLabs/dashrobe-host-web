@@ -1,5 +1,6 @@
 import {
   generateOtp,
+  isValidAdmin,
   loginUser,
   verifyOtp,
   type LoginRole,
@@ -10,7 +11,6 @@ import { getCookie, setCookie } from "@/app/utils/cookieUtils";
 import loginLogo from "@/assets/login-logo.png";
 import chatIcon from "@/assets/icons/chat-icon.png";
 import loginBanner from "@/assets/login-banner.png";
-import { set } from "date-fns";
 
 const ROLE_REDIRECT: Record<string, string> = {
   SUPERADMIN: "/admin",
@@ -58,6 +58,10 @@ export default function LoginPage({ role }: LoginPageProps) {
 
       const fullPhone = `91${phone}`;
 
+      if (role === "superadmin") {
+        await isValidAdmin(phone);
+      }
+
       const data = await generateOtp(fullPhone);
 
       setTokenReferenceId(data.token_reference_id);
@@ -82,9 +86,9 @@ export default function LoginPage({ role }: LoginPageProps) {
 
       const fullPhone = `91${phone}`;
 
-      await verifyOtp(fullPhone, otp, tokenReferenceId);
+      const res = await verifyOtp(fullPhone, otp, tokenReferenceId);
 
-      const loginData = await loginUser(`${phone}`, role);
+      const loginData = await loginUser({phoneNumber: phone, otpToken: res.otp_token}, role);
 
       setCookie("token", loginData.token, 1);
       localStorage.setItem("userId", loginData.userId);
@@ -92,6 +96,9 @@ export default function LoginPage({ role }: LoginPageProps) {
       localStorage.setItem("userType", loginData.userType);
       localStorage.setItem("role", loginData.role);
       localStorage.setItem("newUser", String(loginData.newUser));
+      if (loginData.refreshToken) {
+        localStorage.setItem("refreshToken", loginData.refreshToken);
+      }
 
       const redirectPath = ROLE_REDIRECT[loginData.role] || "/";
       navigate(redirectPath);
