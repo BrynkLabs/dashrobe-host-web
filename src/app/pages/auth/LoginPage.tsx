@@ -1,6 +1,5 @@
 import {
   generateOtp,
-  isValidAdmin,
   loginUser,
   verifyOtp,
   type LoginRole,
@@ -59,10 +58,6 @@ export default function LoginPage({ role }: LoginPageProps) {
 
       const fullPhone = `91${phone}`;
 
-      if (role === "superadmin") {
-        await isValidAdmin(phone);
-      }
-
       const data = await generateOtp(fullPhone);
 
       setTokenReferenceId(data.token_reference_id);
@@ -87,9 +82,9 @@ export default function LoginPage({ role }: LoginPageProps) {
 
       const fullPhone = `91${phone}`;
 
-      const res = await verifyOtp(fullPhone, otp, tokenReferenceId);
+      await verifyOtp(fullPhone, otp, tokenReferenceId);
 
-      const loginData = await loginUser({phoneNumber: phone, otpToken: res.otp_token}, role);
+      const loginData = await loginUser(`${phone}`, role);
 
       setCookie("token", loginData.token, 1);
       localStorage.setItem("userId", loginData.userId);
