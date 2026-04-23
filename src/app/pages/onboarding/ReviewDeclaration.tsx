@@ -236,9 +236,7 @@ export function ReviewDeclaration() {
         { declarationsAccepted: true },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setIsSubmitted(true);
-      setSubmissionStatus("SUBMITTED");
-      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      navigate("/onboarding/success", { replace: true });
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Something went wrong. Please try again.";
       setSubmitError(msg);
