@@ -93,8 +93,10 @@ export function OnboardingLayout() {
           }
         }
 
-        // Show global approved/suspended screens
-        if (d?.status === "APPROVED") {
+        // Show global approved/suspended/submitted screens
+        if (d?.status === "SUBMITTED" && location.pathname !== "/onboarding/success") {
+          navigate("/onboarding/success", { replace: true });
+        } else if (d?.status === "APPROVED") {
           setShowApproved(true);
         } else if (d?.status === "SUSPENDED") {
           setShowSuspended(true);
