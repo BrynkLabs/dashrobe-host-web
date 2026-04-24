@@ -5,10 +5,17 @@ import { Label } from "../../components/ui/label";
 import { Input } from "../../components/ui/input";
 import { Switch } from "../../components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { CircleAlert, Check, Loader2, Hash, IndianRupee, Tag, Paintbrush, X, Shirt } from "lucide-react";
+import { CircleAlert, Check, Loader2, Hash, IndianRupee, Tag, Paintbrush, X, Shirt, CheckCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
+import requestSentIcon from "@/assets/icons/sent-request.png";
 
 const MAX_NUMERIC_VALUE = 1999999999;
 
@@ -62,6 +69,33 @@ export function ProductCategories() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
   const topRef = useRef<HTMLDivElement>(null);
+
+  // Request Category dialog state
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const [requestSubmitting, setRequestSubmitting] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+
+  const handleRequestCategory = async () => {
+    setRequestSubmitting(true);
+    try {
+      const token = getCookie("token");
+      await axiosClient.post(
+        `/api/v1/onboarding/category-request`,
+        { message: "Vendor requested new category" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setRequestSuccess(true);
+    } catch (err: any) {
+      console.error("Category request failed:", err);
+    } finally {
+      setRequestSubmitting(false);
+    }
+  };
+
+  const closeRequestDialog = () => {
+    setRequestDialogOpen(false);
+    setRequestSuccess(false);
+  };
 
   // Fetch categories and vendor's previous selections on mount
   useEffect(() => {
@@ -439,6 +473,20 @@ export function ProductCategories() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {buildGridItems()}
         </div>
+
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              handleRequestCategory();
+              setRequestDialogOpen(true);
+            }}
+            disabled={requestSubmitting}
+            className="text-sm font-medium text-[#220E92] border border-[#220E92] px-4 py-2 rounded-md cursor-pointor transition-colors disabled:opacity-50"
+          >
+            {requestSubmitting ? "Requesting..." : "Request Categories"}
+          </button>
+        </div>
       </div>
 
       {/* Selected Summary */}
@@ -503,6 +551,39 @@ export function ProductCategories() {
           )}
         </Button>
       </div>
+
+      {/* Request Category Dialog */}
+      <Dialog open={requestDialogOpen} onOpenChange={closeRequestDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-[#1A1A2E]">Request Category</DialogTitle>
+          </DialogHeader>
+
+          {requestSuccess ? (
+            <div className="flex flex-col items-center text-center py-6">
+              <img src={requestSentIcon} alt="Success" className="w-30 h-30 mb-4" />
+              <p className="text-2xl font-bold text-[#16A34A] mb-2">Request Sent Successfully!!</p>
+              <p className="text-sm text-[#71717A]">
+                Our team will reach out to you shortly on {localStorage.getItem("phoneNumber") || "your verified number"}.
+                <br />
+                Please continue by selecting other categories
+              </p>
+              <Button
+                onClick={closeRequestDialog}
+                style={{ backgroundColor: "#220E92", borderRadius: "12px" }}
+                className="w-full py-5 text-base font-semibold mt-6"
+              >
+                Continue
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center text-center py-6">
+              <Loader2 className="w-10 h-10 animate-spin text-[#220E92] mb-4" />
+              <p className="text-sm text-gray-500">Sending request...</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
