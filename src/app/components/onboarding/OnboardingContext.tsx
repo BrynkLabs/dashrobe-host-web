@@ -23,6 +23,7 @@ export const defaultAddress: AddressData = {
 
 export interface VendorBasicDetailsData {
   storeName: string;
+  storeType: string;
   businessName: string;
   ownerName: string;
   legalEntity: string; // "sole" | "partnership" | "private" | "llp" | "others"
@@ -93,6 +94,9 @@ export interface BankSettlementData {
 export interface RefundsReturnsData {
   refundPhone: string;
   refundEmail: string;
+  refundWindow: string;
+  exchangePolicy: string;
+  refundMode: string;
 }
 
 export interface OffersPromotionsData {
@@ -129,6 +133,7 @@ const defaultSchedule: DaySchedule[] = [
 const defaultOnboardingData: OnboardingData = {
   vendorBasicDetails: {
     storeName: "",
+    storeType: "",
     businessName: "",
     ownerName: "",
     legalEntity: "",
@@ -188,6 +193,9 @@ const defaultOnboardingData: OnboardingData = {
   refundsReturns: {
     refundPhone: "",
     refundEmail: "",
+    refundWindow: "",
+    exchangePolicy: "",
+    refundMode: "",
   },
   offersPromotions: {
     joinPlatformSalesAds: false,

@@ -7,7 +7,7 @@ import { Switch } from "../../components/ui/switch";
 import { TimeChip } from "../../components/onboarding/TimeChip";
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import { useOnboarding } from "../../components/onboarding/OnboardingContext";
-import { Clock, MapPin, Copy, CopyCheck, Loader2, AlertCircle } from "lucide-react";
+import { Clock, MapPin, Copy, CopyCheck, Loader2, AlertCircle, X } from "lucide-react";
 import { axiosClient } from "@/app/Service/AxiosClient/axiosClient";
 import { getCookie } from "@/app/utils/cookieUtils";
 
@@ -152,6 +152,27 @@ export function StoreOperations() {
 
     if (!ops.storeLocation.trim()) {
       setApiError("Store Location Link is required.");
+      setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      return;
+    }
+
+    // Validate custom time ranges: "to" must be greater than "from"
+    const validateRange = (val: string, label: string) => {
+      if (!val || val === "-") return null;
+      const [from, to] = val.split("-").map(Number);
+      if (!isNaN(from) && !isNaN(to) && to <= from) {
+        return `${label}: 'To' minutes must be greater than 'From' minutes.`;
+      }
+      return null;
+    };
+    const prepErr = !preparationOptions.some((o) => o.id === ops.preparationTime)
+      ? validateRange(ops.preparationTime, "Order Preparation Time")
+      : null;
+    const packErr = !packingTimeOptions.some((o) => o.id === ops.packingTime)
+      ? validateRange(ops.packingTime, "Average Packing Time")
+      : null;
+    if (prepErr || packErr) {
+      setApiError(prepErr || packErr || "");
       setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       return;
     }
@@ -448,7 +469,7 @@ export function StoreOperations() {
 
         <div className="space-y-3">
           <Label>Order Preparation Time *</Label>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
             {preparationOptions.map((option) => (
               <TimeChip
                 key={option.id}
@@ -459,12 +480,17 @@ export function StoreOperations() {
                 }
               />
             ))}
+            <CustomTimeRange
+              value={ops.preparationTime}
+              presetIds={preparationOptions.map((o) => o.id)}
+              onChange={(val) => updateStoreOperations({ preparationTime: val })}
+            />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="packingTime">Average Packing Time (Optional)</Label>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 items-center">
             {packingTimeOptions.map((option) => (
               <TimeChip
                 key={option.id}
@@ -475,6 +501,12 @@ export function StoreOperations() {
                 }
               />
             ))}
+            <CustomTimeRange
+              value={ops.packingTime}
+              presetIds={packingTimeOptions.map((o) => o.id)}
+              onChange={(val) => updateStoreOperations({ packingTime: val })}
+              clearable
+            />
           </div>
         </div>
 
@@ -551,6 +583,105 @@ export function StoreOperations() {
           )}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function CustomTimeRange({
+  value,
+  presetIds,
+  onChange,
+  clearable = false,
+}: {
+  value: string;
+  presetIds: string[];
+  onChange: (val: string) => void;
+  clearable?: boolean;
+}) {
+  const isCustom = value !== "" && !presetIds.includes(value);
+  const [minVal, maxVal] = isCustom ? value.split("-").map(Number) : [NaN, NaN];
+
+  const hasError = isCustom && !isNaN(minVal) && !isNaN(maxVal) && maxVal <= minVal;
+
+  const clamp = (n: number) => Math.max(0, Math.min(59, n));
+
+  const handleMin = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+    if (raw === "") {
+      onChange(`-${isNaN(maxVal) ? "" : maxVal}`);
+      return;
+    }
+    const v = clamp(Number(raw));
+    onChange(`${v}-${isNaN(maxVal) ? "" : maxVal}`);
+  };
+
+  const handleMax = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 2);
+    if (raw === "") {
+      onChange(`${isNaN(minVal) ? "" : minVal}-`);
+      return;
+    }
+    const v = clamp(Number(raw));
+    onChange(`${isNaN(minVal) ? "" : minVal}-${v}`);
+  };
+
+  const activate = () => {
+    if (!isCustom) onChange("-");
+  };
+
+  return (
+    <div className="inline-flex flex-col">
+      <div
+        onClick={activate}
+        className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm cursor-pointer transition-colors ${
+          isCustom
+            ? hasError
+              ? "border-red-400 bg-red-50 text-[#220E92]"
+              : "border-[#220E92] bg-[#220E92]/5 text-[#220E92]"
+            : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+        }`}
+      >
+        <span className="text-xs font-medium whitespace-nowrap">Custom</span>
+        {isCustom && (
+          <>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={isNaN(minVal) ? "" : minVal}
+              onChange={handleMin}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="0"
+              className="w-8 text-center bg-white border border-gray-200 rounded-md py-0.5 text-sm focus:outline-none focus:border-[#220E92]"
+            />
+            <span className="text-gray-400">–</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={isNaN(maxVal) ? "" : maxVal}
+              onChange={handleMax}
+              onClick={(e) => e.stopPropagation()}
+              placeholder="59"
+              className="w-8 text-center bg-white border border-gray-200 rounded-md py-0.5 text-sm focus:outline-none focus:border-[#220E92]"
+            />
+            <span className="text-xs text-gray-500">mins</span>
+            {clearable && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange("");
+                }}
+                className="ml-0.5 p-0.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </>
+        )}
+      </div>
+      {hasError && (
+        <span className="text-[11px] text-red-500 mt-1 ml-1">'To' must be greater than 'From'</span>
+      )}
     </div>
   );
 }

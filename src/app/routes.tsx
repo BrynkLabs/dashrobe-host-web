@@ -62,6 +62,11 @@ const ReviewDeclaration = lazy(() =>
     default: m.ReviewDeclaration,
   }))
 );
+const SubmissionSuccess = lazy(() =>
+  import("./pages/onboarding/SubmissionSuccess").then((m) => ({
+    default: m.SubmissionSuccess,
+  }))
+);
 
 // Vendor
 const VendorDashboard = lazy(() =>
@@ -349,6 +354,7 @@ export const router = createBrowserRouter([
           { path: "offers", Component: wrap(OffersPromotions) },
           { path: "technology", Component: wrap(TechnologyInventory) },
           { path: "review", Component: wrap(ReviewDeclaration) },
+          { path: "success", Component: wrap(SubmissionSuccess) },
         ],
       },
       // TODO: Uncomment vendor routes when vendor dashboard is ready

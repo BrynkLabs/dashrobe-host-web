@@ -427,6 +427,7 @@ export function AdminStoreDetail() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8">
                 <div>
                   <DField label="Store Name" value={vd.basicDetails.storeName} />
+                  <DField label="Store Type" value={vd.basicDetails.storeType || undefined} />
                   <DField label="Business Name" value={vd.basicDetails.businessName} />
                   <DField label="Owner" value={vd.basicDetails.ownerName} />
                   <DField label="Legal Entity" value={vd.basicDetails.legalEntityType} />
@@ -638,6 +639,9 @@ export function AdminStoreDetail() {
               <h3 style={{ fontSize: "15px", fontWeight: 600 }}>Refund Policy</h3>
             </div>
             <div className="p-5">
+              <DField label="Refund Window" value={vd.refundPolicy.refundWindow || undefined} />
+              <DField label="Exchange Policy" value={vd.refundPolicy.exchangePolicy || undefined} />
+              <DField label="Refund Mode" value={vd.refundPolicy.refundMode || undefined} />
               <DField label="Contact Number" value={vd.refundPolicy.refundContactNumber} />
               {/* <DField label="Contact Email" value={vd.refundPolicy.refundContactEmail} /> */}
             </div>

@@ -39,6 +39,7 @@ export type VendorDetailData = {
   rejectionReason: string | null;
   basicDetails: {
     storeName: string;
+    storeType: string | null;
     businessName: string;
     ownerName: string;
     legalEntityType: string;
@@ -106,6 +107,9 @@ export type VendorDetailData = {
   refundPolicy: {
     refundContactNumber: string;
     refundContactEmail: string;
+    refundWindow: string | null;
+    exchangePolicy: string | null;
+    refundMode: string | null;
   } | null;
   offersPromotions: {
     freeShippingEnabled: boolean;
