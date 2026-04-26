@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { CategoryCard } from "../../components/onboarding/CategoryCard";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { AddressFields } from "../../components/onboarding/AddressFields";
@@ -69,6 +70,7 @@ export function VendorBasicDetails() {
           const fetchedPan = (d.pan || "").toUpperCase();
           updateVendorBasicDetails({
             storeName: d.storeName || "",
+            storeType: d.storeType || "",
             businessName: d.businessName || "",
             ownerName: d.ownerName || "",
             legalEntity: REVERSE_LEGAL_ENTITY_MAP[d.legalEntityType] || "",
@@ -200,6 +202,7 @@ export function VendorBasicDetails() {
 
       const payload = {
         storeName: vbd.storeName,
+        storeType: vbd.storeType,
         businessName: vbd.businessName,
         ownerName: vbd.ownerName,
         legalEntityType:
@@ -341,7 +344,7 @@ export function VendorBasicDetails() {
           </div>
         </div>
 
-        {/* Owner & Legal Entity */}
+        {/* Owner, Store Type & Legal Entity */}
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="ownerName">Owner / Authorized Person *</Label>
@@ -354,6 +357,25 @@ export function VendorBasicDetails() {
                 updateVendorBasicDetails({ ownerName: e.target.value })
               }
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="storeType">Store Type *</Label>
+            <Select
+              value={vbd.storeType || undefined}
+              onValueChange={(val) => updateVendorBasicDetails({ storeType: val })}
+            >
+              <SelectTrigger id="storeType" className="rounded-xl">
+                <SelectValue placeholder="Choose store type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Brand Store">Brand store</SelectItem>
+                <SelectItem value="Retail Stores">Retail Stores</SelectItem>
+                <SelectItem value="Boutiques">Boutiques</SelectItem>
+                <SelectItem value="Designers">Designers</SelectItem>
+                <SelectItem value="Home Sellers">Home Sellers</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-3">
