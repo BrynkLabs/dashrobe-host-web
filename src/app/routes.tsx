@@ -69,49 +69,24 @@ const SubmissionSuccess = lazy(() =>
 );
 
 // Vendor
-const VendorDashboard = lazy(() =>
-  import("./pages/vendor/VendorDashboard").then((m) => ({
-    default: m.VendorDashboard,
-  }))
-);
 const VendorProducts = lazy(() =>
-  import("./pages/vendor/VendorProducts").then((m) => ({
-    default: m.VendorProducts,
+  import("./pages/vendor/Products").then((m) => ({
+    default: m.Products,
   }))
 );
-const VendorCategories = lazy(() =>
-  import("./pages/vendor/VendorCategories").then((m) => ({
-    default: m.VendorCategories,
+const VendorAddProduct = lazy(() =>
+  import("./pages/vendor/AddProduct").then((m) => ({
+    default: m.AddProduct,
   }))
 );
-const VendorOrders = lazy(() =>
-  import("./pages/vendor/VendorOrders").then((m) => ({
-    default: m.VendorOrders,
-  }))
-);
-const VendorOffers = lazy(() =>
-  import("./pages/vendor/VendorOffers").then((m) => ({
-    default: m.VendorOffers,
-  }))
-);
-const VendorAccessManagement = lazy(() =>
-  import("./pages/vendor/VendorAccessManagement").then((m) => ({
-    default: m.VendorAccessManagement,
+const VendorViewProduct = lazy(() =>
+  import("./pages/vendor/ViewProduct").then((m) => ({
+    default: m.ViewProduct,
   }))
 );
 const VendorSettings = lazy(() =>
-  import("./pages/vendor/VendorSettings").then((m) => ({
-    default: m.VendorSettings,
-  }))
-);
-const VendorInventory = lazy(() =>
-  import("./pages/vendor/VendorInventory").then((m) => ({
-    default: m.VendorInventory,
-  }))
-);
-const VendorOfflineOrders = lazy(() =>
-  import("./pages/vendor/VendorOfflineOrders").then((m) => ({
-    default: m.VendorOfflineOrders,
+  import("./pages/vendor/Settings").then((m) => ({
+    default: m.Settings,
   }))
 );
 
@@ -266,19 +241,6 @@ function wrap(LazyComp: React.LazyExoticComponent<React.ComponentType<any>>) {
   };
 }
 
-// ─── Redirects ─────────────────────────────────────────────────
-function RedirectToVendor() {
-  return <Navigate to="/vendor" replace />;
-}
-
-function RedirectToCategories() {
-  return <Navigate to="/vendor/categories" replace />;
-}
-
-function RedirectToLogin() {
-  return <Navigate to="/login" replace />;
-}
-
 // ─── Root layout ───────────────────────────────────────────────
 function RootLayout() {
   return (
@@ -341,7 +303,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: RootLayout,
     children: [
-      { index: true, Component: RedirectToVendor },
+      { index: true, element: <Navigate to="/vendor" replace /> },
       {
         path: "onboarding",
         Component: OnboardingLayoutRoute,
@@ -357,31 +319,17 @@ export const router = createBrowserRouter([
           { path: "success", Component: wrap(SubmissionSuccess) },
         ],
       },
-      // TODO: Uncomment vendor routes when vendor dashboard is ready
-      // {
-      //   path: "vendor",
-      //   Component: VendorLayoutRoute,
-      //   children: [
-      //     { index: true, Component: wrap(VendorDashboard) },
-      //     { path: "products", Component: wrap(VendorProducts) },
-      //     { path: "products/add", Component: wrap(VendorProducts) },
-      //     { path: "inventory", Component: wrap(VendorInventory) },
-      //     { path: "categories", Component: wrap(VendorCategories) },
-      //     { path: "subcategories", Component: RedirectToCategories },
-      //     { path: "orders", Component: wrap(VendorOrders) },
-      //     { path: "offline-orders", Component: wrap(VendorOfflineOrders) },
-      //     { path: "offers", Component: wrap(VendorOffers) },
-      //     {
-      //       path: "access-management",
-      //       Component: wrap(VendorAccessManagement),
-      //     },
-      //     { path: "settings", Component: wrap(VendorSettings) },
-      //     { path: "*", Component: RedirectToVendor },
-      //   ],
-      // },
       {
-        path: "vendor/*",
-        element: <Navigate to="/onboarding" replace />,
+        path: "vendor",
+        Component: VendorLayoutRoute,
+        children: [
+          { index: true, element: <Navigate to="/vendor/products" replace /> },
+          { path: "products", Component: wrap(VendorProducts) },
+          { path: "products/add", Component: wrap(VendorAddProduct) },
+          { path: "products/:id", Component: wrap(VendorViewProduct) },
+          { path: "settings", Component: wrap(VendorSettings) },
+          { path: "*", element: <Navigate to="/vendor/products" replace /> },
+        ],
       },
       {
         path: "admin",
