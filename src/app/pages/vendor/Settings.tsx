@@ -24,7 +24,7 @@ export function Settings() {
             </p>
           </div>
 
-          <div className="max-w-[800px]">
+          <div>
             {/* Vendor Basic Details */}
             <div className="bg-white rounded-[12px] overflow-hidden mb-[16px] border border-[rgba(0,0,0,0.08)]">
               <div className="bg-[rgba(34,14,146,0.05)] h-[53px] flex items-center px-[20px] border-b border-[rgba(0,0,0,0.08)]">

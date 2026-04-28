@@ -25,9 +25,9 @@ export function ProductsSidebar() {
   };
 
   return (
-    <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#220e92] text-white flex-col h-screen overflow-y-auto">
+    <aside className="hidden lg:flex w-[220px] shrink-0 bg-[#220e92] text-white flex-col h-screen overflow-y-auto sticky top-0">
       {/* Logo */}
-      <div className="px-5 pt-6 pb-7 border-b border-white/10 shrink-0">
+      <div className="px-5 pt-6 pb-7 shrink-0">
         <DashrobeLogoWhite className="h-8 w-[57px]" />
       </div>
 
@@ -53,7 +53,7 @@ export function ProductsSidebar() {
       </nav>
 
       {/* Bottom — logout */}
-      <div className="px-3 pb-5 pt-4 border-t border-white/10 shrink-0">
+      <div className="px-3 pb-5 pt-4 shrink-0">
         <button
           onClick={handleLogoutClick}
           className="w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-medium text-white/60 hover:bg-white/10 hover:text-white transition-all duration-150"
