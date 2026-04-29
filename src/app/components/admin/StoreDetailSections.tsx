@@ -410,7 +410,7 @@ export function StoreInfoCard({ store, vendorDetail }: { store: StoreType; vendo
             </div>
             <div>
               <p className="text-muted-foreground" style={{ fontSize: "12px" }}>{item.label}</p>
-              <p style={{ fontSize: "14px", fontWeight: 500 }}>{item.value}</p>
+              <p className="break-all" style={{ fontSize: "14px", fontWeight: 500 }}>{item.value}</p>
             </div>
           </div>
         ))}
