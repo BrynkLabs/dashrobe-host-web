@@ -303,7 +303,7 @@ export const router = createBrowserRouter([
     path: "/",
     Component: RootLayout,
     children: [
-      { index: true, element: <Navigate to="/vendor" replace /> },
+      { index: true, element: <Navigate to="/onboarding" replace /> },
       {
         path: "onboarding",
         Component: OnboardingLayoutRoute,
@@ -319,18 +319,19 @@ export const router = createBrowserRouter([
           { path: "success", Component: wrap(SubmissionSuccess) },
         ],
       },
-      {
-        path: "vendor",
-        Component: VendorLayoutRoute,
-        children: [
-          { index: true, element: <Navigate to="/vendor/products" replace /> },
-          { path: "products", Component: wrap(VendorProducts) },
-          { path: "products/add", Component: wrap(VendorAddProduct) },
-          { path: "products/:id", Component: wrap(VendorViewProduct) },
-          { path: "settings", Component: wrap(VendorSettings) },
-          { path: "*", element: <Navigate to="/vendor/products" replace /> },
-        ],
-      },
+      // Vendor dashboard routes — disabled for now
+      // {
+      //   path: "vendor",
+      //   Component: VendorLayoutRoute,
+      //   children: [
+      //     { index: true, element: <Navigate to="/vendor/products" replace /> },
+      //     { path: "products", Component: wrap(VendorProducts) },
+      //     { path: "products/add", Component: wrap(VendorAddProduct) },
+      //     { path: "products/:id", Component: wrap(VendorViewProduct) },
+      //     { path: "settings", Component: wrap(VendorSettings) },
+      //     { path: "*", element: <Navigate to="/vendor/products" replace /> },
+      //   ],
+      // },
       {
         path: "admin",
         Component: AdminLayoutRoute,
