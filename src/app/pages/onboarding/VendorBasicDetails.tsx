@@ -8,18 +8,10 @@ import { CategoryCard } from "../../components/onboarding/CategoryCard";
 import { VerificationBadge } from "../../components/onboarding/VerificationBadge";
 import { AddressFields } from "../../components/onboarding/AddressFields";
 import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "../../components/ui/input-otp";
-import {
   Building2,
   Users,
   FileText,
-  Phone,
-  ShieldCheck,
   Loader2,
-  MessageCircle,
   Briefcase,
   MoreHorizontal,
   AlertCircle,
@@ -119,76 +111,6 @@ export function VendorBasicDetails() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Phone verification UI state (not persisted to context)
-  const [altPhoneOtpSent, setAltPhoneOtpSent] = useState(false);
-  const [altPhoneOtpValue, setAltPhoneOtpValue] = useState("");
-  const [altPhoneSending, setAltPhoneSending] = useState(false);
-  const [altPhoneVerifying, setAltPhoneVerifying] = useState(false);
-  const [altPhoneResendTimer, setAltPhoneResendTimer] = useState(0);
-  const [altPhoneError, setAltPhoneError] = useState("");
-
-  const [altPhoneTokenRefId, setAltPhoneTokenRefId] = useState("");
-
-  // Countdown timer for alt phone
-  useEffect(() => {
-    if (altPhoneResendTimer > 0) {
-      const t = setTimeout(
-        () => setAltPhoneResendTimer(altPhoneResendTimer - 1),
-        1000
-      );
-      return () => clearTimeout(t);
-    }
-  }, [altPhoneResendTimer]);
-
-  const isValidPhone = (val: string) =>
-    /^(\+91\s?)?[6-9]\d{9}$/.test(val.replace(/\s/g, ""));
-
-  const handleSendOtp = useCallback(async () => {
-    if (!isValidPhone(vbd.altPhone)) {
-      setAltPhoneError("Enter a valid 10-digit phone number");
-      return;
-    }
-    setAltPhoneError("");
-    setAltPhoneSending(true);
-    setAltPhoneOtpValue("");
-    try {
-      const fullPhone = `91${normalizePhone(vbd.altPhone)}`;
-      const data = await generateOtp(fullPhone);
-      setAltPhoneTokenRefId(data.token_reference_id);
-      setAltPhoneOtpSent(true);
-      setAltPhoneResendTimer(30);
-    } catch (e) {
-      console.error(e);
-      setAltPhoneError("Failed to send OTP. Please try again.");
-    } finally {
-      setAltPhoneSending(false);
-    }
-  }, [vbd.altPhone]);
-
-  const handleVerifyOtp = useCallback(async () => {
-    if (altPhoneOtpValue.length !== 4) {
-      setAltPhoneError("Please enter the complete 4-digit OTP");
-      return;
-    }
-    setAltPhoneError("");
-    setAltPhoneVerifying(true);
-    try {
-      const fullPhone = `91${normalizePhone(vbd.altPhone)}`;
-      await verifyOtp(fullPhone, altPhoneOtpValue, altPhoneTokenRefId);
-      updateVendorBasicDetails({ altPhoneVerified: true });
-    } catch (e) {
-      console.error(e);
-      setAltPhoneError("OTP verification failed. Please try again.");
-    } finally {
-      setAltPhoneVerifying(false);
-    }
-  }, [
-    altPhoneOtpValue,
-    vbd.altPhone,
-    altPhoneTokenRefId,
-    updateVendorBasicDetails,
-  ]);
 
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
@@ -534,105 +456,8 @@ export function VendorBasicDetails() {
                 value={vbd.phone}
                 disabled
               />
-              {/* <div className="flex items-center gap-1.5 px-3 py-2 bg-green-50 border border-green-200 rounded-xl">
-              <MessageCircle className="w-3.5 h-3.5 text-green-600 shrink-0" />
-              <p className="text-xs text-green-800">WhatsApp is mandatory on this number. All order updates and communication will be sent via WhatsApp.</p>
-            </div> */}
             </div>
 
-            {/* Alternate Phone with OTP Verification */}
-            {/* <div className="space-y-3">
-            <Label htmlFor="altPhone">Alternate Phone (Optional)</Label>
-            <div className="flex gap-2">
-              <Input
-                id="altPhone"
-                type="tel"
-                placeholder="+91 XXXXX XXXXX"
-                className="rounded-xl flex-1"
-                maxLength={10}
-                value={vbd.altPhone}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "").slice(0, 10);
-                  updateVendorBasicDetails({ altPhone: val });
-                  if (vbd.altPhoneVerified) {
-                    updateVendorBasicDetails({ altPhoneVerified: false });
-                    setAltPhoneOtpSent(false);
-                    setAltPhoneOtpValue("");
-                  }
-                }}
-                disabled={vbd.altPhoneVerified}
-              />
-              {!vbd.altPhoneVerified && !altPhoneOtpSent && vbd.altPhone && (
-                <Button
-                  type="button"
-                  onClick={() => handleSendOtp()}
-                  disabled={altPhoneSending || !vbd.altPhone}
-                  variant="outline"
-                  className="shrink-0 px-4 text-xs border-[#220E92] text-[#220E92] hover:bg-purple-50"
-                  style={{ borderRadius: '12px' }}
-                >
-                  {altPhoneSending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Phone className="w-3.5 h-3.5 mr-1.5" />
-                      Send OTP
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
-
-            {altPhoneOtpSent && !vbd.altPhoneVerified && (
-              <div className="space-y-3 p-4 bg-purple-50/60 rounded-2xl border border-purple-100 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center gap-2 text-sm text-[#220E92]">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Enter the 4-digit OTP sent to <span className="font-medium">{vbd.altPhone}</span></span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <InputOTP
-                    maxLength={4}
-                    value={altPhoneOtpValue}
-                    onChange={setAltPhoneOtpValue}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={1} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={2} className="w-10 h-10 rounded-lg border-purple-200" />
-                      <InputOTPSlot index={3} className="w-10 h-10 rounded-lg border-purple-200" />
-                    </InputOTPGroup>
-                  </InputOTP>
-                  <Button
-                    type="button"
-                    onClick={() => handleVerifyOtp()}
-                    disabled={altPhoneVerifying || altPhoneOtpValue.length !== 4}
-                    style={{ backgroundColor: '#220E92', borderRadius: '10px' }}
-                    className="shrink-0 px-4 text-xs h-10"
-                  >
-                    {altPhoneVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : "Verify"}
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  {altPhoneResendTimer > 0 ? (
-                    <span>Resend OTP in <span className="font-medium text-[#220E92]">{altPhoneResendTimer}s</span></span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleSendOtp()}
-                      className="text-[#220E92] font-medium hover:underline cursor-pointer"
-                    >
-                      Resend OTP
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {altPhoneError && (
-              <p className="text-xs text-red-500">{altPhoneError}</p>
-            )}
-            <VerificationBadge verified={vbd.altPhoneVerified} label="Phone Verified" />
-          </div> */}
             <div className="space-y-3">
               <Label htmlFor="email">Email Address *</Label>
               <Input
