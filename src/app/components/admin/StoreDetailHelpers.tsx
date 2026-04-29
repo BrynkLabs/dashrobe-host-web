@@ -55,9 +55,9 @@ export function DField({
       <span className="text-muted-foreground shrink-0" style={{ fontSize: "13px" }}>
         {label}
       </span>
-      <div className="text-right flex items-center gap-2">
+      <div className="text-right flex items-center gap-2 min-w-0">
         {!missing && value && !isMissingValue(value) && (
-          <span style={{ fontSize: "13px", fontWeight: 500 }}>{value}</span>
+          <span className="break-all" style={{ fontSize: "13px", fontWeight: 500 }}>{value}</span>
         )}
         {badge}
         {missing && <MissingTag />}
