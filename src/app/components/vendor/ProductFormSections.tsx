@@ -7,10 +7,13 @@ import { CategorySection } from "./CategorySection";
 import { BrandSelector } from "./BrandSelector";
 import type { Brand } from "./BrandModal";
 
-export function FormCard({ title, children, error }: { title: string; children: ReactNode; error?: string }) {
+export function FormCard({ title, children, error, headerAction }: { title: string; children: ReactNode; error?: string; headerAction?: ReactNode }) {
   return (
     <div className="bg-white rounded-xl border border-[#eef0f4] p-6">
-      <h2 className="text-[15px] font-semibold text-[#1a1a2e] mb-4">{title}</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-[15px] font-semibold text-[#1a1a2e]">{title}</h2>
+        {headerAction}
+      </div>
       {error && (
         <p className="text-[12px] text-red-500 mb-3 flex items-center gap-1">
           <AlertCircle className="size-3" />{error}

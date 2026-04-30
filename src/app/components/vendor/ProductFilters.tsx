@@ -106,9 +106,6 @@ export function BulkActionBar({
       <div className="flex items-center gap-2.5 min-h-[36px]">
         {selectedCount > 0 ? (
           <>
-            <span className="text-[12px] text-[#667085] bg-[#f9fafb] border border-[#eaecf0] rounded-lg px-2.5 py-1" style={{ fontWeight: 500 }}>
-              {selectedCount} selected
-            </span>
             {availableBulkActions.length > 0 ? (
               <>
                 <Select value={bulkAction} onValueChange={onBulkActionChange}>

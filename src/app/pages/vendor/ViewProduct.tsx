@@ -3,7 +3,7 @@ import { useParams, Link, useBlocker } from "react-router";
 import { ArrowLeft, ImageIcon } from "lucide-react";
 import { AddProductHeader, type HeaderState } from "../../components/vendor/AddProductHeader";
 import { VariantsTable, ProductVariant } from "../../components/vendor/VariantsTable";
-import { SizeChartBuilder, SavedSizeChart } from "../../components/vendor/SizeChartBuilder";
+import { SizeChartBuilder, SavedSizeChart, type SizeChartBuilderRef } from "../../components/vendor/SizeChartBuilder";
 import { SpecificationsSection, Specification } from "../../components/vendor/SpecificationsSection";
 import { BrandModal, Brand } from "../../components/vendor/BrandModal";
 import { PRODUCT_DETAILS, ViewProductImage } from "../../data/productData";
@@ -71,6 +71,7 @@ export function ViewProduct() {
   const [specifications, setSpecifications] = useState<Specification[]>(savedSnapshot.specifications);
   const [specificationsOpen, setSpecificationsOpen] = useState((product?.specifications?.length ?? 0) > 0);
   const [savedSizeCharts, setSavedSizeCharts] = useState<SavedSizeChart[]>([]);
+  const sizeChartRef = useRef<SizeChartBuilderRef>(null);
   const [selectedSizeChartId, setSelectedSizeChartId] = useState<string | null>(null);
   const [brands, setBrands] = useState<Brand[]>([
     { id: "b-1", name: "Banaras Weavers Co.", logo: null }, { id: "b-2", name: "Royal Threads", logo: null },
@@ -169,8 +170,10 @@ export function ViewProduct() {
             <FormCard title="Variants *" error={errors.variants}>
               <VariantsTable variants={variants} onVariantsChange={setVariants} errors={errors} showDelete={false} />
             </FormCard>
-            <FormCard title="Size Chart">
-              <SizeChartBuilder isEnabled={!!(gender && category && subcategory)} savedCharts={savedSizeCharts} selectedChartId={selectedSizeChartId} onSelectChart={setSelectedSizeChartId} onSaveChart={(c) => setSavedSizeCharts([...savedSizeCharts, c])} />
+            <FormCard title="Size Chart" headerAction={
+              <button type="button" onClick={() => sizeChartRef.current?.save()} className="px-5 h-9 rounded-lg bg-[#220e92] text-white text-[13px] hover:bg-[#1a0a73] transition-colors" style={{ fontWeight: 600 }}>Save Chart</button>
+            }>
+              <SizeChartBuilder ref={sizeChartRef} isEnabled={!!(gender && category && subcategory)} savedCharts={savedSizeCharts} selectedChartId={selectedSizeChartId} onSelectChart={setSelectedSizeChartId} onSaveChart={(c) => setSavedSizeCharts([...savedSizeCharts, c])} />
             </FormCard>
             <SpecificationsSection specifications={specifications} onSpecificationsChange={setSpecifications} isOpen={specificationsOpen} onToggle={() => setSpecificationsOpen(!specificationsOpen)} />
           </div>

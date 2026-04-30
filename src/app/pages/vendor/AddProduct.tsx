@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { AddProductHeader, type HeaderState } from "../../components/vendor/AddProductHeader";
 import { ImageUploadSection, ProductImage } from "../../components/vendor/ImageUploadSection";
 import { VariantsTable, ProductVariant } from "../../components/vendor/VariantsTable";
-import { SizeChartBuilder, SavedSizeChart } from "../../components/vendor/SizeChartBuilder";
+import { SizeChartBuilder, SavedSizeChart, type SizeChartBuilderRef } from "../../components/vendor/SizeChartBuilder";
 import { SpecificationsSection, Specification } from "../../components/vendor/SpecificationsSection";
 import { BrandModal, Brand } from "../../components/vendor/BrandModal";
 import { useUnsavedChanges } from "../../context/UnsavedChangesContext";
@@ -36,6 +36,7 @@ export function AddProduct() {
     { id: "1", color: null, size: "", mrp: "", offerPrice: "", status: "Active", image: null, isDefault: true },
   ]);
   const [savedSizeCharts, setSavedSizeCharts] = useState<SavedSizeChart[]>([]);
+  const sizeChartRef = useRef<SizeChartBuilderRef>(null);
   const [selectedSizeChartId, setSelectedSizeChartId] = useState<string | null>(null);
   const [specifications, setSpecifications] = useState<Specification[]>([]);
   const [specificationsOpen, setSpecificationsOpen] = useState(false);
@@ -124,8 +125,10 @@ export function AddProduct() {
             <FormCard title="Variants *" error={errors.variants}>
               <VariantsTable variants={variants} onVariantsChange={setVariants} errors={errors} />
             </FormCard>
-            <FormCard title="Size Chart">
-              <SizeChartBuilder isEnabled={!!(gender && category && subcategory)} savedCharts={savedSizeCharts} selectedChartId={selectedSizeChartId} onSelectChart={setSelectedSizeChartId} onSaveChart={(c) => setSavedSizeCharts([...savedSizeCharts, c])} />
+            <FormCard title="Size Chart" headerAction={
+              <button type="button" onClick={() => sizeChartRef.current?.save()} className="px-5 h-9 rounded-lg bg-[#220e92] text-white text-[13px] hover:bg-[#1a0a73] transition-colors" style={{ fontWeight: 600 }}>Save Chart</button>
+            }>
+              <SizeChartBuilder ref={sizeChartRef} isEnabled={!!(gender && category && subcategory)} savedCharts={savedSizeCharts} selectedChartId={selectedSizeChartId} onSelectChart={setSelectedSizeChartId} onSaveChart={(c) => setSavedSizeCharts([...savedSizeCharts, c])} />
             </FormCard>
             <SpecificationsSection specifications={specifications} onSpecificationsChange={setSpecifications} isOpen={specificationsOpen} onToggle={() => setSpecificationsOpen(!specificationsOpen)} />
           </div>

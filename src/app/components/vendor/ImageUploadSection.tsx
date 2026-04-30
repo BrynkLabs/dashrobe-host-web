@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "../ui/button";
 import { ConfirmationModal } from "./ConfirmationModal";
 
@@ -148,20 +148,18 @@ export function ImageUploadSection({
               : "border-[#d0d5dd] hover:border-[#98a2b3]"
           }`}
         >
-          <div className="flex flex-col items-center gap-3">
-            <div className="size-12 rounded-full bg-[#f9fafb] flex items-center justify-center">
-              <Upload className="size-5 text-[#475467]" />
-            </div>
-            <div>
-              <p className="text-[13px] text-[#475467] mb-1">
-                No images yet. Add a cover and gallery photos using the actions
-                below.
-              </p>
-              <p className="text-[12px] text-[#98a2b3]">
-                At least one photo is required. Each file must be square (1:1
-                ratio) and not exceed {maxSizeMB}MB.
-              </p>
-            </div>
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-[13px] text-[#475467]">
+              No images yet. Add a cover and gallery photos using the actions below.
+            </p>
+            <p className="text-[13px] text-[#475467]">
+              At least one photo is required.{" "}
+              <span className="text-[#220e92] font-medium">
+                Each file must be square (1:1 ratio) and not exceed {maxSizeMB}MB.
+              </span>
+            </p>
+          </div>
+          <div className="border-t border-[#eef0f4] mt-4 pt-4 flex flex-col items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -172,16 +170,13 @@ export function ImageUploadSection({
             />
             <Button
               onClick={handleClickUpload}
-              className="bg-[#220e92] hover:bg-[#1a0a73] text-white rounded-lg h-10 px-4 mt-2 text-[13px]"
+              className="bg-[#220e92] hover:bg-[#1a0a73] text-white rounded-lg h-10 px-8 text-[13px]"
+              style={{ fontWeight: 600 }}
             >
-              Upload now
+              Upload new
             </Button>
-            <p className="text-[11px] text-[#98a2b3] mt-1">
-              Up to {maxImages} images.{" "}
-              <span className="text-[#475467]">
-                Max {maxSizeMB}MB / default 1:1 ratio
-              </span>{" "}
-              but any other thumbnail formats in the catalog image
+            <p className="text-[11px] text-[#98a2b3]">
+              Up to {maxImages} images · check "Cover / default" on any thumbnail to make it the catalog image
             </p>
           </div>
         </div>

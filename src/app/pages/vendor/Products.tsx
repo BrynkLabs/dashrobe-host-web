@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { ProductStatusTabs } from "../../components/vendor/ProductStatusTabs";
 import { ProductFilterRow, BulkActionBar } from "../../components/vendor/ProductFilters";
 import { ProductTable, ProductPagination } from "../../components/vendor/ProductTable";
+import warningIcon from "@/assets/icons/warning-icon.png";
 
 type Status = "Active" | "Draft" | "Hidden";
 
@@ -46,6 +47,7 @@ export function Products() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showBulkConfirm, setShowBulkConfirm] = useState(false);
   const [duplicateProductId, setDuplicateProductId] = useState<string | null>(null);
+  const [showDraftWarning, setShowDraftWarning] = useState(false);
 
   const counts = useMemo(() => ({
     all: items.length,
@@ -92,6 +94,27 @@ export function Products() {
     setBulkAction("");
   };
 
+  const hasDraftInSelection = Array.from(selected).some((id) => items.find((p) => p.id === id)?.status === "Draft");
+
+  const handleBulkApplyClick = () => {
+    if (!bulkAction || selected.size === 0) return;
+    if (hasDraftInSelection) {
+      setShowDraftWarning(true);
+    } else {
+      setShowBulkConfirm(true);
+    }
+  };
+
+  const excludeDraftAndContinue = () => {
+    setShowDraftWarning(false);
+    const next = new Set(selected);
+    items.forEach((p) => { if (p.status === "Draft" && next.has(p.id)) next.delete(p.id); });
+    setSelected(next);
+    if (next.size > 0) {
+      setShowBulkConfirm(true);
+    }
+  };
+
   const applyBulk = () => {
     if (!bulkAction || selected.size === 0) return;
     const newStatus: Status = bulkAction === "active" ? "Active" : bulkAction === "draft" ? "Draft" : "Hidden";
@@ -136,7 +159,7 @@ export function Products() {
           <BulkActionBar
             selectedCount={selected.size} bulkAction={bulkAction} onBulkActionChange={setBulkAction}
             availableBulkActions={availableBulkActions}
-            onApplyBulk={() => { if (bulkAction && selected.size > 0) setShowBulkConfirm(true); }}
+            onApplyBulk={handleBulkApplyClick}
             search={search} onSearchChange={(v) => { setSearch(v); setPage(1); }}
           />
           <ProductTable
@@ -148,6 +171,36 @@ export function Products() {
         </div>
       </main>
 
+      {showDraftWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setShowDraftWarning(false)} />
+          <div className="relative bg-white rounded-2xl shadow-[0px_20px_60px_rgba(0,0,0,0.15)] w-full max-w-[420px] p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <img src={warningIcon} alt="Warning" className="size-10 shrink-0" />
+              <h2 className="text-[16px] text-[#101828]" style={{ fontWeight: 600 }}>Apply Changes</h2>
+            </div>
+            <p className="text-[14px] text-[#475467] leading-[21px] mb-6">
+              Bulk Actions cannot be applied to "Draft" status items. Do you want to continue and exclude draft items?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={excludeDraftAndContinue}
+                className="w-full h-11 rounded-xl text-[14px] text-white bg-[#220e92] hover:bg-[#1a0a73] transition-colors shadow-sm"
+                style={{ fontWeight: 600 }}
+              >
+                Exclude Draft and Continue
+              </button>
+              <button
+                onClick={() => setShowDraftWarning(false)}
+                className="w-full h-11 rounded-xl text-[14px] text-[#344054] border border-[#d0d5dd] hover:bg-[#f9fafb] transition-colors"
+                style={{ fontWeight: 500 }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <ConfirmationModal isOpen={showBulkConfirm} onClose={() => setShowBulkConfirm(false)} onConfirm={applyBulk}
         title="Apply Changes" message={`Are you sure you want to set all items to "${bulkAction === "active" ? "Active" : bulkAction === "draft" ? "Draft" : "Hidden"}"?`}
         confirmText="Yes, Apply" icon="alert" />
