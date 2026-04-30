@@ -31,20 +31,17 @@ export function ConfirmationModal({
 
       {/* Modal */}
       <div className="relative bg-white rounded-2xl shadow-[0px_20px_60px_rgba(0,0,0,0.15)] w-full max-w-[420px] overflow-hidden">
-        {/* Top accent bar */}
-        <div className="h-1 w-full bg-[#220e92]" />
-
         <div className="p-6">
           {/* Close */}
-          <button
+          {/* <button
             onClick={onClose}
             className="absolute top-4 right-4 size-7 flex items-center justify-center rounded-lg text-[#98a2b3] hover:bg-[#f2f4f7] hover:text-[#344054] transition-colors"
           >
             <X className="size-4" />
-          </button>
+          </button> */}
 
           {/* Icon + Title */}
-          <div className="flex items-start gap-4 mb-4">
+          <div className="flex items-center gap-4 mb-4">
             <div
               className={`size-10 rounded-xl flex items-center justify-center shrink-0 ${
                 icon === "warning"
@@ -66,7 +63,7 @@ export function ConfirmationModal({
           </div>
 
           {/* Message */}
-          <p className="text-[14px] text-[#475467] leading-[21px] mb-6 pl-14">
+          <p className="text-[14px] text-[#475467] leading-[21px] mb-6">
             {message}
           </p>
 

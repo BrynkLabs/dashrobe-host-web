@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { Plus, Upload, X } from "lucide-react";
+import variantDelIcon from "@/assets/icons/varient-del.png";
 import { Input } from "../ui/input";
 import {
   Select,
@@ -130,6 +131,7 @@ export function VariantsTable({
 }: VariantsTableProps) {
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [deleteVariantId, setDeleteVariantId] = useState<string | null>(null);
 
   const addVariantRow = () => {
     if (variants.length >= 20) return;
@@ -392,7 +394,7 @@ export function VariantsTable({
                   {showDelete && variants.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeVariant(variant.id)}
+                      onClick={() => setDeleteVariantId(variant.id)}
                       className="size-7 flex items-center justify-center rounded-md text-[#98a2b3] hover:bg-red-50 hover:text-red-500 transition-colors"
                       title="Remove row"
                     >
@@ -417,6 +419,38 @@ export function VariantsTable({
         <Plus className="size-3.5" />
         Add variant row{variants.length >= 20 ? " (max 20)" : ""}
       </button>
+
+      {/* Delete variant confirmation modal */}
+      {deleteVariantId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setDeleteVariantId(null)} />
+          <div className="relative bg-white rounded-2xl shadow-[0px_20px_60px_rgba(0,0,0,0.15)] w-full max-w-[420px] p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <img src={variantDelIcon} alt="Delete" className="size-10 shrink-0" />
+              <h2 className="text-[16px] text-[#101828]" style={{ fontWeight: 600 }}>Delete Variant</h2>
+            </div>
+            <p className="text-[14px] text-[#475467] leading-[21px] mb-6">
+              Are you sure you want to delete this Variant?
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setDeleteVariantId(null)}
+                className="flex-1 h-12 rounded-xl text-[14px] text-[#344054] border border-[#d0d5dd] hover:bg-[#f9fafb] transition-colors"
+                style={{ fontWeight: 500 }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { removeVariant(deleteVariantId); setDeleteVariantId(null); }}
+                className="flex-1 h-12 rounded-xl text-[14px] text-white bg-[#f87171] hover:bg-[#ef4444] transition-colors"
+                style={{ fontWeight: 600 }}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Color picker modal */}
       <ColorPickerModal

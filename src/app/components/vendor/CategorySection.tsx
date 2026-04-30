@@ -224,7 +224,7 @@ export function CategorySection({
               key={g}
               type="button"
               onClick={() => onGenderChange(g)}
-              className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-colors ${
                 gender === g
                   ? "bg-[#220e92] text-white"
                   : "bg-[#f9fafb] text-[#475467] hover:bg-[#f2f4f7] border border-[#eaecf0]"

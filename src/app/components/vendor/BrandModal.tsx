@@ -35,15 +35,30 @@ export function BrandModal({ isOpen, onClose, onSave }: BrandModalProps) {
       return;
     }
 
-    // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Logo size must not exceed 2MB");
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Logo size must not exceed 5MB");
       return;
     }
 
-    setError("");
-    setLogoFile(file);
-    setLogoPreview(URL.createObjectURL(file));
+    // Validate 1:1 aspect ratio
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      if (img.width !== img.height) {
+        setError("Logo must be square (1:1 ratio)");
+        URL.revokeObjectURL(url);
+        return;
+      }
+      setError("");
+      setLogoFile(file);
+      setLogoPreview(url);
+    };
+    img.onerror = () => {
+      setError("Failed to read image");
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
   };
 
   const handleSave = () => {
@@ -117,7 +132,7 @@ export function BrandModal({ isOpen, onClose, onSave }: BrandModalProps) {
                 <img
                   src={logoPreview}
                   alt="Brand logo"
-                  className="size-12 object-contain rounded border border-[#eef0f4] bg-white"
+                  className="size-12 object-cover rounded border border-[#eef0f4] bg-white aspect-square"
                 />
                 <div className="flex-1">
                   <p className="text-[13px] text-[#1a1a2e] font-medium">
@@ -155,7 +170,7 @@ export function BrandModal({ isOpen, onClose, onSave }: BrandModalProps) {
                       Click to upload logo
                     </p>
                     <p className="text-[11px] text-[#98a2b3]">
-                      PNG, JPG up to 2MB
+                      PNG, JPG up to 5MB · 1:1 ratio
                     </p>
                   </div>
                 </button>
